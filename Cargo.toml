@@ -1,0 +1,13 @@
+[package]
+name = "npy"
+version = "0.1.0"
+authors = ["Pavel Potocek <pavelpotocek@gmail.com>"]
+
+[dependencies]
+byteorder = "*"
+rustc-serialize = "*"
+nom = "*"
+serde = "*"
+serde_derive = "*"
+memmap = "*"
+# serde_json = "*"
