@@ -6,6 +6,7 @@ extern crate nom;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde;
+extern crate memmap;
 
 mod header;
 mod readable;
@@ -15,7 +16,7 @@ mod npy_data;
 
 pub use readable::Readable;
 pub use writeable::Writeable;
-pub use npy_data::{NpyData, NpyIterator};
+pub use npy_data::{NpyData, NpyIterator, from_bytes, to_file};
 
 pub use std::io::Cursor;
 

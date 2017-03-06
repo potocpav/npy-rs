@@ -1,0 +1,11 @@
+[package]
+name = "npy-derive"
+version = "0.1.0"
+authors = ["Pavel Potocek <pavelpotocek@gmail.com>"]
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = "*"
+quote = "*"

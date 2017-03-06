@@ -10,4 +10,5 @@ nom = "*"
 serde = "*"
 serde_derive = "*"
 memmap = "*"
+npy-derive = { path = "npy-derive" }
 # serde_json = "*"
