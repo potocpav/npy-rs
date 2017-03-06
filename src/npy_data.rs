@@ -3,10 +3,7 @@ use nom::*;
 use std::io::{Result,ErrorKind,Error,Write,BufWriter,Seek,SeekFrom};
 use std::fs::File;
 use std::marker::PhantomData;
-// use std::path::Path;
-// use std::str::from_utf8;
 use byteorder::{WriteBytesExt, LittleEndian};
-// use memmap::{Mmap, Protection};
 
 use super::Cursor;
 use header::{Value, parse_header};

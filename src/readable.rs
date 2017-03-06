@@ -28,6 +28,26 @@ impl Readable for i64 {
         c.read_i64::<LittleEndian>()
     }
 }
+impl Readable for u8 {
+    fn read(c: &mut Cursor<&[u8]>) -> Result<Self> {
+        c.read_u8()
+    }
+}
+impl Readable for u16 {
+    fn read(c: &mut Cursor<&[u8]>) -> Result<Self> {
+        c.read_u16::<LittleEndian>()
+    }
+}
+impl Readable for u32 {
+    fn read(c: &mut Cursor<&[u8]>) -> Result<Self> {
+        c.read_u32::<LittleEndian>()
+    }
+}
+impl Readable for u64 {
+    fn read(c: &mut Cursor<&[u8]>) -> Result<Self> {
+        c.read_u64::<LittleEndian>()
+    }
+}
 impl Readable for f32 {
     fn read(c: &mut Cursor<&[u8]>) -> Result<Self> {
         c.read_f32::<LittleEndian>()
