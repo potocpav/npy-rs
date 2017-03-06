@@ -20,9 +20,14 @@ npy_data! {
 }
 
 fn main() {
-    let file_mmap = Mmap::open_path("test/large-file.npy", Protection::Read).unwrap();
+
+
+    let file_mmap = Mmap::open_path("test/file.npy", Protection::Read).unwrap();
     let bytes: &[u8] = unsafe { file_mmap.as_slice() }; // No concurrent modification allowed
 
     let res: Vec<_> = Data::from_bytes(bytes).unwrap().collect();
     println!("{:?}", res.len());
+
+    Data::to_file("test/output.npy", res.into_iter().take(10)).unwrap();
+
 }

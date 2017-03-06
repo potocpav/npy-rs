@@ -9,10 +9,12 @@ extern crate serde;
 
 mod header;
 mod readable;
+mod writeable;
 #[macro_use]
 mod npy_data;
 
 pub use readable::Readable;
+pub use writeable::Writeable;
 pub use npy_data::{NpyData, NpyIterator};
 
 pub use std::io::Cursor;
