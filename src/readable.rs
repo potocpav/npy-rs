@@ -1,10 +1,10 @@
 
-use std::io::Result;
+use std::io::{Cursor,Result};
 use byteorder::{ReadBytesExt, LittleEndian};
-use super::Cursor;
 
-
+/// A type that can be deserialized as a part of a struct implementing NpyData.
 pub trait Readable: Sized {
+    /// Deserialize a single data field
     fn read(c: &mut Cursor<&[u8]>) -> Result<Self>;
 }
 

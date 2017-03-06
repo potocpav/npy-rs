@@ -1,4 +1,25 @@
+#![warn(missing_docs)]
 #![feature(slice_patterns)]
+
+/*!
+Serialize and deserialize the NumPy's *.npy binary format.
+
+# Overview
+
+NPY is a simple binary data format. It stores the type, shape and endianness information in a header,
+which is followed by a flat binary data field. This crate offers a simple type-safe way to read and write
+*.npy files. Files that can't fit into the memory are handled by using iterators instead of strict
+data structures.
+
+TODO: Data format spec
+
+# Example
+
+```
+TODO: example
+```
+
+*/
 
 extern crate byteorder;
 #[macro_use]
@@ -8,14 +29,11 @@ extern crate memmap;
 mod header;
 mod readable;
 mod writeable;
-#[macro_use]
 mod npy_data;
 
 pub use readable::Readable;
 pub use writeable::Writeable;
 pub use npy_data::{NpyData, NpyIterator, from_bytes, to_file};
-
-pub use std::io::Cursor;
 
 
 #[cfg(test)]
@@ -48,9 +66,6 @@ mod tests {
         assert_eq!(list(b" (4)"), IResult::Done(&b""[..], List(vec![Integer(4)]))); // FIXME: Make this not parse as a List
         assert_eq!(list(b" (1 , 2 ,)"), IResult::Done(&b""[..], List(vec![Integer(1), Integer(2)])));
         assert_eq!(list(b" [5 , 6 , 7]"), IResult::Done(&b""[..], List(vec![Integer(5), Integer(6), Integer(7)])));
-        // assert_eq!(item(br#"
-        //     {'descr': [('batchId', '<i4'), ('hostHash', '<i8'), ('user', '<i8'), ('aggregate', '<f8'), ('label', '<i1'), ], 'fortran_order': False, 'shape': (1376,), }
-        //     "#), IResult::Done(&b""[..], Bool(true)));
     }
     //
     // #[test]
@@ -60,9 +75,4 @@ mod tests {
     //     let res: Vec<_> = S::from_bytes(bytes).unwrap().collect();
     //     println!("{:?}", res);
     // }
-
-    #[test]
-    fn create_header() {
-        // assert_eq!(S::get_fields(), vec![]);
-    }
 }

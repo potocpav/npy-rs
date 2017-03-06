@@ -1,14 +1,15 @@
 
 use nom::*;
-use std::io::{Result,ErrorKind,Error,Write,BufWriter,Seek,SeekFrom};
+use std::io::{Result,ErrorKind,Error,Write,BufWriter,Seek,SeekFrom,Cursor};
 use std::fs::File;
 use std::marker::PhantomData;
 use byteorder::{WriteBytesExt, LittleEndian};
 
-use super::Cursor;
 use header::{Value, parse_header};
 
-
+/// A result of NPY file deserialization.
+///
+/// It is an iterator to offer a lazy interface in case the data don't fit into memory.
 pub struct NpyIterator<'a, T> {
     cursor: Cursor<&'a [u8]>,
     remaining: usize,
@@ -16,7 +17,7 @@ pub struct NpyIterator<'a, T> {
 }
 
 impl<'a, T> NpyIterator<'a, T> {
-    pub fn new(cursor: Cursor<&'a [u8]>, n_rows: usize) -> Self {
+    fn new(cursor: Cursor<&'a [u8]>, n_rows: usize) -> Self {
         NpyIterator {
             cursor: cursor,
             remaining: n_rows,
@@ -127,11 +128,17 @@ fn cursor_from_bytes<T: NpyData>(bytes: &[u8]) -> Result<(Cursor<&[u8]>, i64)> {
     Ok((Cursor::new(data), n_rows))
 }
 
+/// Deserialize a NPY file represented as bytes
+///
+/// TODO: Explanation
 pub fn from_bytes<'a, T: NpyData>(bytes: &'a [u8]) -> ::std::io::Result<NpyIterator<'a, T>> {
     let (cur, n_rows) = cursor_from_bytes::<T>(bytes)?;
     Ok(NpyIterator::new(cur, n_rows as usize))
 }
 
+/// Serialize an iterator over a struct to a NPY file
+///
+/// TODO: Explanation
 pub fn to_file<S,T>(filename: &str, data: T) -> ::std::io::Result<()> where
         S: NpyData,
         T: Iterator<Item=S> {
@@ -180,13 +187,14 @@ pub fn to_file<S,T>(filename: &str, data: T) -> ::std::io::Result<()> where
     Ok(())
 }
 
+/// This trait is often automatically implemented by a `#[derive(NpyData)]`
 pub trait NpyData : Sized {
-    // Provided by the macro npy_data
+    /// Get a vector describing the struct in a format (field_name, field_type).
     fn get_fields() -> Vec<(&'static str, &'static str)>;
 
-    // Provided by the macro npy_data
+    /// Deserialize binary data to a single instance of Self
     fn read_row(c: &mut Cursor<&[u8]>) -> Option<Self>;
 
-    // Provided by the macro npy_data
+    /// Write Self in a binary form to a writer.
     fn write_row<W: Write>(&self, writer: &mut W) -> ::std::io::Result<()>;
 }

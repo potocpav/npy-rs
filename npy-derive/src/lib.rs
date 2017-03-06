@@ -53,7 +53,7 @@ fn impl_npy_data(ast: &syn::DeriveInput) -> quote::Tokens {
                 vec![#( (#idents_str, #types) ),*]
             }
 
-            fn read_row(c: &mut npy::Cursor<&[u8]>) -> Option<Self> {
+            fn read_row(c: &mut ::std::io::Cursor<&[u8]>) -> Option<Self> {
                 Some(Self { #(
                     #idents: {
                         if let Ok(v) = npy::Readable::read(c) {

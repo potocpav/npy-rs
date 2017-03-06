@@ -2,9 +2,9 @@
 use std::io::{Write,Result};
 use byteorder::{WriteBytesExt, LittleEndian};
 
-
-
+/// A type that can be serialized as a part of a struct implementing NpyData.
 pub trait Writeable {
+    /// Serialize a single data field
     fn write<W: Write>(self, writer: &mut W) -> Result<()>;
 }
 
