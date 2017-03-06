@@ -1,8 +1,4 @@
-// Temporary file we will be testing the new library by
-
 extern crate npy;
-extern crate rustc_serialize;
-extern crate nom;
 extern crate memmap;
 
 #[macro_use]

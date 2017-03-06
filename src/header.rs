@@ -2,7 +2,7 @@
 use nom::*;
 use std::collections::HashMap;
 
-#[derive(PartialEq, Eq, Debug, Serialize)]
+#[derive(PartialEq, Eq, Debug)]
 pub enum Value {
     String(String),
     Integer(i64),

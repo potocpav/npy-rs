@@ -3,9 +3,6 @@
 extern crate byteorder;
 #[macro_use]
 extern crate nom;
-#[macro_use]
-extern crate serde_derive;
-extern crate serde;
 extern crate memmap;
 
 mod header;

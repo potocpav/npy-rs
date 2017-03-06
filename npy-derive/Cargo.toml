@@ -7,5 +7,5 @@ authors = ["Pavel Potocek <pavelpotocek@gmail.com>"]
 proc-macro = true
 
 [dependencies]
-syn = "*"
-quote = "*"
+quote = "0.3"
+syn = "0.11"
