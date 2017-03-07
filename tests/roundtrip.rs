@@ -3,8 +3,7 @@ extern crate npy_derive;
 extern crate npy;
 extern crate byteorder;
 
-use std::io::Read;
-use std::io::{Cursor,Write};
+use std::io::{Cursor,Read,Write};
 use byteorder::{WriteBytesExt, ReadBytesExt, LittleEndian};
 use npy::{DType,Serializable};
 

@@ -1,5 +1,5 @@
 
-use nom::*;
+use nom::IResult;
 use std::collections::HashMap;
 
 /// Representation of a Numpy type
