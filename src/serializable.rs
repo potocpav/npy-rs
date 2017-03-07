@@ -6,7 +6,8 @@ use header::DType;
 /// This trait contains information on how to serialize and deserialize a type.
 ///
 /// It must be implemented for every member of a struct that we use as a serialization target,
-/// typically by using `#[derive(NpyData)]`.
+/// typically by using `#[derive(NpyData)]`. An example illustrating `Serializable` implementation
+/// for a vector is [in this example](https://github.com/potocpav/npy-rs/tree/master/examples/vector.rs).
 pub trait Serializable : Sized {
     /// Convert a type to a structure representing a Numpy type
     fn dtype() -> DType;
