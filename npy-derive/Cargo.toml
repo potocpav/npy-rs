@@ -2,6 +2,9 @@
 name = "npy-derive"
 version = "0.1.0"
 authors = ["Pavel Potocek <pavelpotocek@gmail.com>"]
+license = "MIT"
+description = "Macros 1.1 implementation of #[derive(NpyData)] for crate npy"
+repository = "https://github.com/potocpav/npy-rs"
 
 [lib]
 proc-macro = true
