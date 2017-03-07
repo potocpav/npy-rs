@@ -1,5 +1,14 @@
 #![recursion_limit = "128"]
-#![feature(proc_macro)]
+// #![feature(proc_macro)]
+
+/*!
+Derive `trait NpyData` for a structure.
+
+Using this crate, it is enough to `#[derive(NpyData)]` on a struct to be able to serialize and
+deserialize it. All the fields must implement [`Serializable`](../npy/trait.Serializable.html).
+
+*/
+
 extern crate proc_macro;
 extern crate syn;
 #[macro_use]
@@ -9,6 +18,7 @@ use proc_macro::TokenStream;
 use syn::Body;
 use quote::{Tokens, ToTokens};
 
+/// Macros 1.1-based custom derive function
 #[proc_macro_derive(NpyData)]
 pub fn npy_data(input: TokenStream) -> TokenStream {
     // Construct a string representation of the type definition
@@ -41,22 +51,32 @@ fn impl_npy_data(ast: &syn::DeriveInput) -> quote::Tokens {
     let types = fields.iter().map(|f|  {
         let mut t = Tokens::new();
         f.ty.to_tokens(&mut t);
-        t.to_string()
-    });
+        t
+    }).collect::<Vec<_>>();
 
     let idents_c = idents.clone();
-    let idents_str = idents.clone().into_iter().map(|t| t.to_string());
+    let idents_str = idents.clone().into_iter().map(|t| t.to_string()).collect::<Vec<_>>();
+    let idents_str_c1 = idents_str.clone();
+    let idents_str_c2 = idents_str.clone();
+    let types_c1 = types.clone();
+    let types_c2 = types.clone();
+    let types_c3 = types.clone();
+    let types_str = types.clone().into_iter().map(|t| t.to_string()).collect::<Vec<_>>();
 
     quote! {
-        impl #impl_generics ::npy::NpyData for #name #ty_generics #where_clause {
-            fn get_fields() -> Vec<(&'static str, &'static str)> {
-                vec![#( (#idents_str, #types) ),*]
+        impl #impl_generics npy::NpyData for #name #ty_generics #where_clause {
+            fn get_dtype() -> Vec<(&'static str, npy::DType)> {
+                vec![#( {
+                    // let
+                    // (#idents_str_c1, #types_c1::dtype())
+                    (#idents_str_c1, <#types_c1 as npy::Seriazable>::dtype())
+                } ),*]
             }
 
             fn read_row(c: &mut ::std::io::Cursor<&[u8]>) -> Option<Self> {
-                Some(Self { #(
+                Some(#name { #(
                     #idents: {
-                        if let Ok(v) = npy::Readable::read(c) {
+                        if let Ok(v) = npy::Seriazable::read(c) {
                             v
                         } else {
                             return None;
@@ -66,7 +86,7 @@ fn impl_npy_data(ast: &syn::DeriveInput) -> quote::Tokens {
             }
 
             fn write_row<W: ::std::io::Write>(&self, writer: &mut W) -> ::std::io::Result<()> {
-                #( npy::Writeable::write(self.#idents_c, writer)?; )*
+                #( npy::Seriazable::write(self.#idents_c, writer)?; )*
                 Ok(())
             }
         }

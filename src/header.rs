@@ -2,6 +2,42 @@
 use nom::*;
 use std::collections::HashMap;
 
+/// Representation of a Numpy type
+pub struct DType {
+    /// Numpy type string. First character is `'>'` for big endian, `'<'` for little endian.
+    ///
+    /// Examples: `>i4`, `<u8`, `>f8`. The number corresponds to the number of bytes.
+    pub ty: &'static str,
+
+    /// Shape of a type.
+    ///
+    /// Scalar has zero entries. Otherwise, number of entries == number of dimensions and each
+    /// entry specifies size in the respective dimension.
+    pub shape: Vec<u64>,
+}
+
+/// To avoid exporting the to_value function, it is on a separate trait.
+pub trait DTypeToValue {
+    fn to_value(&self, name: &str) -> Value;
+}
+
+impl DTypeToValue for DType {
+    fn to_value(&self, name: &str) -> Value {
+        if self.shape.len() == 0 { // scalar
+            Value::List(vec![
+                Value::String(name.into()),
+                Value::String(self.ty.into()),
+            ])
+        } else {
+            Value::List(vec![
+                Value::String(name.into()),
+                Value::String(self.ty.into()),
+                Value::List(self.shape.iter().map(|&n| Value::Integer(n as i64)).collect::<Vec<_>>()),
+            ])
+        }
+    }
+}
+
 #[derive(PartialEq, Eq, Debug)]
 pub enum Value {
     String(String),
@@ -99,3 +135,16 @@ mod parser {
         )
     );
 }
+
+// #[test]
+// fn parse_header() {
+//     assert_eq!(integer(b"1234  "), IResult::Done(&b""[..], Integer(1234)));
+//     assert_eq!(string(br#" "Hello"   "#), IResult::Done(&b""[..], String("Hello".into())));
+//     assert_eq!(string(br#" 'World!'   "#), IResult::Done(&b""[..], String("World!".into())));
+//     assert_eq!(boolean(b"  True"), IResult::Done(&b""[..], Bool(true)));
+//     assert_eq!(boolean(b"False "), IResult::Done(&b""[..], Bool(false)));
+//     assert_eq!(list(b" ()"), IResult::Done(&b""[..], List(vec![]))); // FIXME: Make this not parse as a List
+//     assert_eq!(list(b" (4)"), IResult::Done(&b""[..], List(vec![Integer(4)]))); // FIXME: Make this not parse as a List
+//     assert_eq!(list(b" (1 , 2 ,)"), IResult::Done(&b""[..], List(vec![Integer(1), Integer(2)])));
+//     assert_eq!(list(b" [5 , 6 , 7]"), IResult::Done(&b""[..], List(vec![Integer(5), Integer(6), Integer(7)])));
+// }

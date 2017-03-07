@@ -5,7 +5,7 @@ use std::fs::File;
 use std::marker::PhantomData;
 use byteorder::{WriteBytesExt, LittleEndian};
 
-use header::{Value, parse_header};
+use header::{DTypeToValue, Value, DType, parse_header};
 
 /// A result of NPY file deserialization.
 ///
@@ -41,17 +41,18 @@ impl<'a, T> Iterator for NpyIterator<'a, T> where T: NpyData {
     }
 }
 
-fn to_dtype<'a>(rust_ty: &str) -> Option<&'a str> {
-    match rust_ty {
-        "i8" => Some("<i1"),
-        "i16" => Some("<i2"),
-        "i32" => Some("<i4"),
-        "i64" => Some("<i8"),
-        "f32" => Some("<f4"),
-        "f64" => Some("<f8"),
-        _ => None
-    }
+/// This trait is often automatically implemented by a `#[derive(NpyData)]`
+pub trait NpyData : Sized {
+    /// Get a vector of pairs (field_name, DType) representing the struct type.
+    fn get_dtype() -> Vec<(&'static str, DType)>;
+
+    /// Deserialize binary data to a single instance of Self
+    fn read_row(c: &mut Cursor<&[u8]>) -> Option<Self>;
+
+    /// Write Self in a binary form to a writer.
+    fn write_row<W: Write>(&self, writer: &mut W) -> ::std::io::Result<()>;
 }
+
 
 fn cursor_from_bytes<T: NpyData>(bytes: &[u8]) -> Result<(Cursor<&[u8]>, i64)> {
     let (data, header) = match parse_header(bytes) {
@@ -89,40 +90,12 @@ fn cursor_from_bytes<T: NpyData>(bytes: &[u8]) -> Result<(Cursor<&[u8]>, i64)> {
         .ok_or(Error::new(ErrorKind::InvalidData,
                 "\'descr\' field is not present or doesn't contain a list."))?;
 
-    let fields = T::get_fields();
-
-    if fields.len() != descr.len() {
+    let expected_type_ast = T::get_dtype().into_iter().map(|(s,dt)| dt.to_value(&s)).collect::<Vec<_>>();
+    // TODO: It would be better to compare DType, not Value AST.
+    if expected_type_ast != descr {
         return Err(Error::new(ErrorKind::InvalidData,
-            "The npy header lists a different number of columns than the NpyData trait."));
-    }
-
-    // let mut big_endian = Vec::with_capacity(fields.len()); // FIXME: support big endian
-    // Get the endianness and check that the field names and types are OK
-    for ((name, ty), value) in T::get_fields().into_iter().zip(descr.into_iter()) {
-        if let &Value::List(ref l) = value {
-            match &l[..] {
-                &[Value::String(ref n), Value::String(ref t)] => {
-                    if n != name {
-                        return Err(Error::new(ErrorKind::InvalidData,
-                            format!("The descriptor name {:?} doesn't match {:?}.", n, name)))
-                    }
-
-                    if to_dtype(ty) != Some(t) {
-                        return Err(Error::new(ErrorKind::InvalidData,
-                            format!("Type {:?} doesn't match {:?} for descriptor {:?} (or {:?} is big endian, which is unsupported ATM).", ty, t, n, t)
-                        ));
-                    }
-                },
-                &[Value::String(ref _n), Value::String(ref _t), Value::List(ref _s)] => {
-                    unimplemented!()
-                },
-                _ => return Err(Error::new(ErrorKind::InvalidData,
-                    "A type desriptor's type isn't [String, String] nor [String, String, List]."))
-            }
-        } else {
-            return Err(Error::new(ErrorKind::InvalidData,
-                "A type desriptor is not a list."));
-        };
+            format!("Types don't match! type1: {:?}, type2: {:?}", expected_type_ast, descr)
+        ));
     }
 
     Ok((Cursor::new(data), n_rows))
@@ -141,34 +114,42 @@ pub fn from_bytes<'a, T: NpyData>(bytes: &'a [u8]) -> ::std::io::Result<NpyItera
 /// TODO: Explanation
 pub fn to_file<S,T>(filename: &str, data: T) -> ::std::io::Result<()> where
         S: NpyData,
-        T: Iterator<Item=S> {
+        T: IntoIterator<Item=S> {
     let mut fw = BufWriter::new(File::create(filename)?);
     fw.write(&[0x93u8])?;
     fw.write(b"NUMPY")?;
     fw.write(&[0x01u8, 0x00])?;
     let mut header: Vec<u8> = vec![];
     header.extend(&b"{'descr': ["[..]);
-    for (id, ty) in S::get_fields() {
-        if let Some(t) = to_dtype(ty) {
-            header.extend(format!("('{}', '{}'), ", id, t).as_bytes());
+
+    for (id, t) in S::get_dtype() {
+
+        if t.shape.len() == 0 {
+            header.extend(format!("('{}', '{}'), ", id, t.ty).as_bytes());
         } else {
-            return Err(Error::new(ErrorKind::InvalidData,
-                format!("Serialization of type {:?} not implemented.", ty)
-            ));
+            let shape_str = t.shape.into_iter().fold(String::new(), |o,n| o + &format!("{},", n));
+            header.extend(format!("('{}', '{}', ({})), ", id, t.ty, shape_str).as_bytes());
         }
     }
+
     header.extend(&b"], 'fortran_order': False, 'shape': ("[..]);
     let shape_pos = header.len() + 10;
     let filler = &b"abcdefghijklmnopqrs"[..];
     header.extend(filler);
     header.extend(&b",), }"[..]);
-    assert!(header.len() <= ::std::i16::MAX as usize);
 
-    fw.write_i16::<LittleEndian>(header.len() as i16)?;
+    let mut padding: Vec<u8> = vec![];
+    padding.extend(&::std::iter::repeat(b' ').take(15 - ((header.len() + 10) % 16)).collect::<Vec<_>>());
+    padding.extend(&[b'\n']);
+
+    let len = header.len() + padding.len();
+    assert! (len <= ::std::u16::MAX as usize);
+    assert!((len + 10) % 16 == 0);
+
+    fw.write_u16::<LittleEndian>(len as u16)?;
     fw.write(&header)?;
     // Padding to 8 bytes
-    fw.write(&::std::iter::repeat(b' ').take(15 - ((header.len() + 10) % 16)).collect::<Vec<_>>())?;
-    fw.write(&[b'\n'])?;
+    fw.write(&padding)?;
 
     // Write data
     let mut num = 0usize;
@@ -185,16 +166,4 @@ pub fn to_file<S,T>(filename: &str, data: T) -> ::std::io::Result<()> where
     fw.write(&::std::iter::repeat(b' ').take(filler.len() - length.len()).collect::<Vec<_>>())?;
 
     Ok(())
-}
-
-/// This trait is often automatically implemented by a `#[derive(NpyData)]`
-pub trait NpyData : Sized {
-    /// Get a vector describing the struct in a format (field_name, field_type).
-    fn get_fields() -> Vec<(&'static str, &'static str)>;
-
-    /// Deserialize binary data to a single instance of Self
-    fn read_row(c: &mut Cursor<&[u8]>) -> Option<Self>;
-
-    /// Write Self in a binary form to a writer.
-    fn write_row<W: Write>(&self, writer: &mut W) -> ::std::io::Result<()>;
 }
