@@ -57,18 +57,12 @@ fn impl_npy_data(ast: &syn::DeriveInput) -> quote::Tokens {
     let idents_c = idents.clone();
     let idents_str = idents.clone().into_iter().map(|t| t.to_string()).collect::<Vec<_>>();
     let idents_str_c1 = idents_str.clone();
-    let idents_str_c2 = idents_str.clone();
     let types_c1 = types.clone();
-    let types_c2 = types.clone();
-    let types_c3 = types.clone();
-    let types_str = types.clone().into_iter().map(|t| t.to_string()).collect::<Vec<_>>();
 
     quote! {
         impl #impl_generics npy::NpyData for #name #ty_generics #where_clause {
             fn get_dtype() -> Vec<(&'static str, npy::DType)> {
                 vec![#( {
-                    // let
-                    // (#idents_str_c1, #types_c1::dtype())
                     (#idents_str_c1, <#types_c1 as npy::Seriazable>::dtype())
                 } ),*]
             }
