@@ -1,5 +1,5 @@
 
-# npy-rs &emsp; [![crates.io version](https://img.shields.io/crates/v/npy.svg)](https://crates.io/crates/npy) [![Documentation](https://docs.rs/npy/badge.svg)](https://docs.rs/npy/) ![Build Status](https://travis-ci.org/potocpav/npy-rs.svg?branch=master)
+# npy-rs &emsp; [![crates.io version](https://img.shields.io/crates/v/npy.svg)](https://crates.io/crates/npy) [![Documentation](https://docs.rs/npy/badge.svg)](https://docs.rs/npy/) [![Build Status](https://travis-ci.org/potocpav/npy-rs.svg?branch=master)](https://travis-ci.org/potocpav/npy-rs)
 
 Numpy format (*.npy) serialization and deserialization.
 
