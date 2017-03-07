@@ -75,11 +75,6 @@ Array { a: 2, b: 3.1, c: 5 }
 extern crate byteorder;
 #[macro_use]
 extern crate nom;
-extern crate memmap;
-//
-// #[cfg(test)]
-// #[macro_use]
-// extern crate npy_derive;
 
 mod header;
 mod seriazable;

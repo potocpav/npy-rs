@@ -15,8 +15,8 @@ members = [ "npy-derive" ]
 
 [dependencies]
 byteorder = "1"
-memmap = "0.5"
 nom = "2.1"
 
 [dev-dependencies]
+memmap = "0.5"
 npy-derive = { path = "npy-derive", version = "0.1" }
