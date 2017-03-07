@@ -27,7 +27,8 @@ To deserialize other types or big-endian values, one must manually implement
 
 # Examples
 
-More examples can be found in the [examples](https://github.com/potocpav/npy-rs/examples) directory.
+More examples can be found in the [examples](https://github.com/potocpav/npy-rs/tree/master/examples)
+directory.
 
 Let's create a simple *.npy file in Python:
 
