@@ -5,7 +5,7 @@ authors = ["Pavel Potocek <pavelpotocek@gmail.com>"]
 license = "MIT"
 description = "NumPy file format (de-)serialization"
 repository = "https://github.com/potocpav/npy-rs"
-documentation = "https://github.io/potocpav/npy-rs"
+# documentation = "https://github.io/potocpav/npy-rs"
 keywords = ["numpy", "npy"]
 categories = ["encoding"]
 readme = "README.md"
@@ -19,4 +19,4 @@ memmap = "0.5"
 nom = "2.1"
 
 [dev-dependencies]
-npy-derive = { path = "npy-derive", version = "0.1"t }
+npy-derive = { path = "npy-derive", version = "0.1" }
