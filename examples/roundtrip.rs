@@ -16,7 +16,7 @@ fn main() {
         arrays.push(Array { a: i, b: (i as f32 * 3.14 / 180.0).sin() });
     }
 
-    npy::to_file("examples/roundtrip.npy", arrays).unwrap();
+    npy::to_file("examples/roundtrip.npy", &arrays).unwrap();
 
     let mut buf = vec![];
     std::fs::File::open("examples/roundtrip.npy").unwrap()

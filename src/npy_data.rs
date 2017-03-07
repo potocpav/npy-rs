@@ -112,9 +112,9 @@ pub fn from_bytes<'a, T: NpyData>(bytes: &'a [u8]) -> ::std::io::Result<NpyItera
 /// Serialize an iterator over a struct to a NPY file
 ///
 /// TODO: Explanation
-pub fn to_file<S,T>(filename: &str, data: T) -> ::std::io::Result<()> where
-        S: NpyData,
-        T: IntoIterator<Item=S> {
+pub fn to_file<'a,S,T>(filename: &str, data: T) -> ::std::io::Result<()> where
+        S: NpyData + 'a,
+        T: IntoIterator<Item=&'a S> {
     let mut fw = BufWriter::new(File::create(filename)?);
     fw.write(&[0x93u8])?;
     fw.write(b"NUMPY")?;
