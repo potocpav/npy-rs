@@ -7,7 +7,7 @@ use header::DType;
 ///
 /// It must be implemented for every member of a struct that we use as a serialization target,
 /// typically by using `#[derive(NpyData)]`.
-pub trait Seriazable : Sized {
+pub trait Serializable : Sized {
     /// Convert a type to a structure representing a Numpy type
     fn dtype() -> DType;
 
@@ -18,7 +18,7 @@ pub trait Seriazable : Sized {
     fn write<W: Write>(&self, writer: &mut W) -> Result<()>;
 }
 
-// impl<'a, T: Seriazable + Copy + 'a> Seriazable for &'a T {
+// impl<'a, T: Serializable + Copy + 'a> Serializable for &'a T {
 //     fn dtype() -> DType {
 //         Self::dtype()
 //     }
@@ -30,7 +30,7 @@ pub trait Seriazable : Sized {
 //     }
 // }
 
-impl Seriazable for i8 {
+impl Serializable for i8 {
     fn dtype() -> DType {
         DType { ty: "<i1", shape: vec![] }
     }
@@ -42,7 +42,7 @@ impl Seriazable for i8 {
     }
 }
 
-impl Seriazable for i16 {
+impl Serializable for i16 {
     fn dtype() -> DType {
         DType { ty: "<i2", shape: vec![] }
     }
@@ -54,7 +54,7 @@ impl Seriazable for i16 {
     }
 }
 
-impl Seriazable for i32 {
+impl Serializable for i32 {
     fn dtype() -> DType {
         DType { ty: "<i4", shape: vec![] }
     }
@@ -66,7 +66,7 @@ impl Seriazable for i32 {
     }
 }
 
-impl Seriazable for i64 {
+impl Serializable for i64 {
     fn dtype() -> DType {
         DType { ty: "<i8", shape: vec![] }
     }
@@ -78,7 +78,7 @@ impl Seriazable for i64 {
     }
 }
 
-impl Seriazable for u8 {
+impl Serializable for u8 {
     fn dtype() -> DType {
         DType { ty: "<u1", shape: vec![] }
     }
@@ -90,7 +90,7 @@ impl Seriazable for u8 {
     }
 }
 
-impl Seriazable for u16 {
+impl Serializable for u16 {
     fn dtype() -> DType {
         DType { ty: "<u2", shape: vec![] }
     }
@@ -102,7 +102,7 @@ impl Seriazable for u16 {
     }
 }
 
-impl Seriazable for u32 {
+impl Serializable for u32 {
     fn dtype() -> DType {
         DType { ty: "<u4", shape: vec![] }
     }
@@ -114,7 +114,7 @@ impl Seriazable for u32 {
     }
 }
 
-impl Seriazable for u64 {
+impl Serializable for u64 {
     fn dtype() -> DType {
         DType { ty: "<u8", shape: vec![] }
     }
@@ -126,7 +126,7 @@ impl Seriazable for u64 {
     }
 }
 
-impl Seriazable for f32 {
+impl Serializable for f32 {
     fn dtype() -> DType {
         DType { ty: "<f4", shape: vec![] }
     }
@@ -138,7 +138,7 @@ impl Seriazable for f32 {
     }
 }
 
-impl Seriazable for f64 {
+impl Serializable for f64 {
     fn dtype() -> DType {
         DType { ty: "<f8", shape: vec![] }
     }

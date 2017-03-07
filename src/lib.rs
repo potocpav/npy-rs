@@ -23,7 +23,7 @@ must contain:
 
 Currently, all the primitive numeric types are supported, though they work only with little-endian.
 To deserialize other types or big-endian values, one must manually implement
-[`Seriazable`](trait.Seriazable.html).
+[`Serializable`](trait.Serializable.html).
 
 # Examples
 
@@ -78,10 +78,10 @@ extern crate byteorder;
 extern crate nom;
 
 mod header;
-mod seriazable;
+mod serializable;
 mod npy_data;
 
-pub use seriazable::Seriazable;
+pub use serializable::Serializable;
 pub use header::DType;
 pub use npy_data::{NpyData, NpyIterator, from_bytes, to_file};
 

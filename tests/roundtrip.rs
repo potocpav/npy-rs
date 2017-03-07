@@ -6,7 +6,7 @@ extern crate byteorder;
 use std::io::Read;
 use std::io::{Cursor,Write};
 use byteorder::{WriteBytesExt, ReadBytesExt, LittleEndian};
-use npy::{DType,Seriazable};
+use npy::{DType,Serializable};
 
 #[derive(NpyData, Debug, PartialEq)]
 struct Array {
@@ -26,7 +26,7 @@ struct Array {
 #[derive(Debug, PartialEq)]
 struct Vector5(Vec<i32>);
 
-impl Seriazable for Vector5 {
+impl Serializable for Vector5 {
     fn dtype() -> DType {
         DType { ty: "<i4", shape: vec![5] }
     }
