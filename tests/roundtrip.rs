@@ -1,8 +1,12 @@
 #[macro_use]
 extern crate npy_derive;
 extern crate npy;
+extern crate byteorder;
 
 use std::io::Read;
+use std::io::{Cursor,Write};
+use byteorder::{WriteBytesExt, ReadBytesExt, LittleEndian};
+use npy::{DType,Seriazable};
 
 #[derive(NpyData, Debug, PartialEq)]
 struct Array {
@@ -16,6 +20,31 @@ struct Array {
     v_u64: u64,
     v_f32: f32,
     v_f64: f64,
+    vec: Vector5,
+}
+
+#[derive(Debug, PartialEq)]
+struct Vector5(Vec<i32>);
+
+impl Seriazable for Vector5 {
+    fn dtype() -> DType {
+        DType { ty: "<i4", shape: vec![5] }
+    }
+
+    fn read(c: &mut Cursor<&[u8]>) -> std::io::Result<Self> {
+        let mut ret = Vector5(vec![]);
+        for _ in 0..5 {
+            ret.0.push(c.read_i32::<LittleEndian>()?);
+        }
+        Ok(ret)
+    }
+
+    fn write<W: Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        for i in 0..5 {
+            writer.write_i32::<LittleEndian>(self.0[i])?
+        }
+        Ok(())
+    }
 }
 
 #[test]
@@ -35,6 +64,7 @@ fn roundtrip() {
             v_u64: i as u64,
             v_f32: i as f32,
             v_f64: i as f64,
+            vec: Vector5(vec![1,2,3,4,5]),
         };
         arrays.push(a);
     }

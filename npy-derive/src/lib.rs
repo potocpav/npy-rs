@@ -67,20 +67,14 @@ fn impl_npy_data(ast: &syn::DeriveInput) -> quote::Tokens {
                 } ),*]
             }
 
-            fn read_row(c: &mut ::std::io::Cursor<&[u8]>) -> Option<Self> {
-                Some(#name { #(
-                    #idents: {
-                        if let Ok(v) = npy::Seriazable::read(c) {
-                            v
-                        } else {
-                            return None;
-                        }
-                    }
+            fn read_row(c: &mut ::std::io::Cursor<&[u8]>) -> ::std::io::Result<Self> {
+                Ok(#name { #(
+                    #idents: { npy::Seriazable::read(c)? }
                 ),* })
             }
 
             fn write_row<W: ::std::io::Write>(&self, writer: &mut W) -> ::std::io::Result<()> {
-                #( npy::Seriazable::write(self.#idents_c, writer)?; )*
+                #( npy::Seriazable::write(&self.#idents_c, writer)?; )*
                 Ok(())
             }
         }

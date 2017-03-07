@@ -30,7 +30,7 @@ impl<'a, T> Iterator for NpyIterator<'a, T> where T: NpyData {
     type Item = T;
     fn next(&mut self) -> Option<Self::Item> {
         if self.remaining == 0 {
-            if let Some(_) = T::read_row(&mut self.cursor) {
+            if let Ok(_) = T::read_row(&mut self.cursor) {
                 panic!("File was longer than the shape implied.");
             }
             None
@@ -47,7 +47,7 @@ pub trait NpyData : Sized {
     fn get_dtype() -> Vec<(&'static str, DType)>;
 
     /// Deserialize binary data to a single instance of Self
-    fn read_row(c: &mut Cursor<&[u8]>) -> Option<Self>;
+    fn read_row(c: &mut Cursor<&[u8]>) -> ::std::io::Result<Self>;
 
     /// Write Self in a binary form to a writer.
     fn write_row<W: Write>(&self, writer: &mut W) -> ::std::io::Result<()>;

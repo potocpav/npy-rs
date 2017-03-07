@@ -1,6 +1,6 @@
 [package]
 name = "npy-derive"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Pavel Potocek <pavelpotocek@gmail.com>"]
 license = "MIT"
 description = "Macros 1.1 implementation of #[derive(NpyData)] for crate npy"

@@ -15,8 +15,20 @@ pub trait Seriazable : Sized {
     fn read(c: &mut Cursor<&[u8]>) -> Result<Self>;
 
     /// Serialize a single data field into a writer.
-    fn write<W: Write>(self, writer: &mut W) -> Result<()>;
+    fn write<W: Write>(&self, writer: &mut W) -> Result<()>;
 }
+
+// impl<'a, T: Seriazable + Copy + 'a> Seriazable for &'a T {
+//     fn dtype() -> DType {
+//         Self::dtype()
+//     }
+//     fn read(c: &mut Cursor<&[u8]>) -> Result<Self> {
+//         T::read(c)
+//     }
+//     fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
+//         (*self).write(writer)
+//     }
+// }
 
 impl Seriazable for i8 {
     fn dtype() -> DType {
@@ -25,8 +37,8 @@ impl Seriazable for i8 {
     fn read(c: &mut Cursor<&[u8]>) -> Result<Self> {
         c.read_i8()
     }
-    fn write<W: Write>(self, writer: &mut W) -> Result<()> {
-        writer.write_i8(self)
+    fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        writer.write_i8(*self)
     }
 }
 
@@ -37,8 +49,8 @@ impl Seriazable for i16 {
     fn read(c: &mut Cursor<&[u8]>) -> Result<Self> {
         c.read_i16::<LittleEndian>()
     }
-    fn write<W: Write>(self, writer: &mut W) -> Result<()> {
-        writer.write_i16::<LittleEndian>(self)
+    fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        writer.write_i16::<LittleEndian>(*self)
     }
 }
 
@@ -49,8 +61,8 @@ impl Seriazable for i32 {
     fn read(c: &mut Cursor<&[u8]>) -> Result<Self> {
         c.read_i32::<LittleEndian>()
     }
-    fn write<W: Write>(self, writer: &mut W) -> Result<()> {
-        writer.write_i32::<LittleEndian>(self)
+    fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        writer.write_i32::<LittleEndian>(*self)
     }
 }
 
@@ -61,8 +73,8 @@ impl Seriazable for i64 {
     fn read(c: &mut Cursor<&[u8]>) -> Result<Self> {
         c.read_i64::<LittleEndian>()
     }
-    fn write<W: Write>(self, writer: &mut W) -> Result<()> {
-        writer.write_i64::<LittleEndian>(self)
+    fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        writer.write_i64::<LittleEndian>(*self)
     }
 }
 
@@ -73,8 +85,8 @@ impl Seriazable for u8 {
     fn read(c: &mut Cursor<&[u8]>) -> Result<Self> {
         c.read_u8()
     }
-    fn write<W: Write>(self, writer: &mut W) -> Result<()> {
-        writer.write_u8(self)
+    fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        writer.write_u8(*self)
     }
 }
 
@@ -85,8 +97,8 @@ impl Seriazable for u16 {
     fn read(c: &mut Cursor<&[u8]>) -> Result<Self> {
         c.read_u16::<LittleEndian>()
     }
-    fn write<W: Write>(self, writer: &mut W) -> Result<()> {
-        writer.write_u16::<LittleEndian>(self)
+    fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        writer.write_u16::<LittleEndian>(*self)
     }
 }
 
@@ -97,8 +109,8 @@ impl Seriazable for u32 {
     fn read(c: &mut Cursor<&[u8]>) -> Result<Self> {
         c.read_u32::<LittleEndian>()
     }
-    fn write<W: Write>(self, writer: &mut W) -> Result<()> {
-        writer.write_u32::<LittleEndian>(self)
+    fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        writer.write_u32::<LittleEndian>(*self)
     }
 }
 
@@ -109,8 +121,8 @@ impl Seriazable for u64 {
     fn read(c: &mut Cursor<&[u8]>) -> Result<Self> {
         c.read_u64::<LittleEndian>()
     }
-    fn write<W: Write>(self, writer: &mut W) -> Result<()> {
-        writer.write_u64::<LittleEndian>(self)
+    fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        writer.write_u64::<LittleEndian>(*self)
     }
 }
 
@@ -121,8 +133,8 @@ impl Seriazable for f32 {
     fn read(c: &mut Cursor<&[u8]>) -> Result<Self> {
         c.read_f32::<LittleEndian>()
     }
-    fn write<W: Write>(self, writer: &mut W) -> Result<()> {
-        writer.write_f32::<LittleEndian>(self)
+    fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        writer.write_f32::<LittleEndian>(*self)
     }
 }
 
@@ -133,7 +145,7 @@ impl Seriazable for f64 {
     fn read(c: &mut Cursor<&[u8]>) -> Result<Self> {
         c.read_f64::<LittleEndian>()
     }
-    fn write<W: Write>(self, writer: &mut W) -> Result<()> {
-        writer.write_f64::<LittleEndian>(self)
+    fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
+        writer.write_f64::<LittleEndian>(*self)
     }
 }
