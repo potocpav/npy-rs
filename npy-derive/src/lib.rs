@@ -60,21 +60,21 @@ fn impl_npy_data(ast: &syn::DeriveInput) -> quote::Tokens {
     let types_c1 = types.clone();
 
     quote! {
-        impl #impl_generics npy::NpyData for #name #ty_generics #where_clause {
-            fn get_dtype() -> Vec<(&'static str, npy::DType)> {
+        impl #impl_generics ::npy::NpyData for #name #ty_generics #where_clause {
+            fn get_dtype() -> Vec<(&'static str, ::npy::DType)> {
                 vec![#( {
-                    (#idents_str_c1, <#types_c1 as npy::Serializable>::dtype())
+                    (#idents_str_c1, <#types_c1 as ::npy::Serializable>::dtype())
                 } ),*]
             }
 
             fn read_row(c: &mut ::std::io::Cursor<&[u8]>) -> ::std::io::Result<Self> {
                 Ok(#name { #(
-                    #idents: { npy::Serializable::read(c)? }
+                    #idents: { ::npy::Serializable::read(c)? }
                 ),* })
             }
 
             fn write_row<W: ::std::io::Write>(&self, writer: &mut W) -> ::std::io::Result<()> {
-                #( npy::Serializable::write(&self.#idents_c, writer)?; )*
+                #( ::npy::Serializable::write(&self.#idents_c, writer)?; )*
                 Ok(())
             }
         }
