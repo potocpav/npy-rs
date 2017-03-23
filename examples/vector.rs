@@ -16,6 +16,9 @@ struct Array {
 #[derive(Debug)]
 struct Vector5(Vec<i32>);
 
+// Note that for a vector of 5 elements, an array [i32; 5] with `impl Serializable` provided by
+// this crate can be used instead. This example merely illustrates a possible way to implement
+// Serializable.
 impl Serializable for Vector5 {
     fn dtype() -> DType {
         DType { ty: "<i4", shape: vec![5] }
