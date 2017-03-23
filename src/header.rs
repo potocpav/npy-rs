@@ -60,7 +60,7 @@ mod parser {
             tag!(&[0x93u8]) >>
             tag!(b"NUMPY") >>
             tag!(&[0x01u8, 0x00]) >>
-            hdr: length_value!(le_i16, item) >>
+            hdr: length_value!(le_u16, item) >>
             (hdr)
         )
     );
