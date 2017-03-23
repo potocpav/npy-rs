@@ -21,10 +21,10 @@ must contain:
 * corresponding names of fields,
 * compatible field types.
 
-Currently, all the primitive numeric types are supported, though they work only with little-endian.
-To deserialize other types or big-endian values, one must manually implement
-[`Serializable`](trait.Serializable.html). A very common object that (right now) requires a manual
-`impl` is an array, as illustrated in
+Currently, all the primitive numeric types and arrays of up to 16 elements are supported, though
+they work only with little-endian. To deserialize other types or big-endian values, one must
+manually implement [`Serializable`](trait.Serializable.html). A very common object that (right now)
+requires a manual `impl` is a vector, as illustrated in
 [an example](https://github.com/potocpav/npy-rs/tree/master/examples/vector.rs).
 
 # Examples

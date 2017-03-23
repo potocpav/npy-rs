@@ -150,3 +150,28 @@ impl Serializable for f64 {
         writer.write_f64::<LittleEndian>(*self)
     }
 }
+
+macro_rules! gen_array_serializable {
+    ($($n:tt),+) => { $(
+        impl<T: Serializable + Default + Copy> Serializable for [T; $n] {
+            fn dtype() -> DType {
+                DType { ty: T::dtype().ty, shape: T::dtype().shape.into_iter().chain(Some($n)).collect() }
+            }
+            fn read(c: &mut Cursor<&[u8]>) -> Result<Self> {
+                let mut a = [T::default(); $n];
+                for i in 0..$n {
+                    a[i] = T::read(c)?;
+                }
+                Ok(a)
+            }
+            fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
+                for i in 0..$n {
+                    self[i].write(writer)?;
+                }
+                Ok(())
+            }
+        }
+    )+ }
+}
+
+gen_array_serializable!(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16);
