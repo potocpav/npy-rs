@@ -10,9 +10,11 @@ use header::{DTypeToValue, Value, DType, parse_header};
 /// A result of NPY file deserialization.
 ///
 /// It is an iterator to offer a lazy interface in case the data don't fit into memory.
+#[derive(Clone)]
 pub struct NpyIterator<'a, T> {
     cursor: Cursor<&'a [u8]>,
     remaining: usize,
+    // TODO: Handle correctly. T does not need to be Clone for the iterator to be Clone.
     _t: PhantomData<T>
 }
 
@@ -39,7 +41,13 @@ impl<'a, T> Iterator for NpyIterator<'a, T> where T: NpyData {
             Some(T::read_row(&mut self.cursor).expect("File was too short (or the stated shape was too small)."))
         }
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.remaining, Some(self.remaining))
+    }
 }
+
+impl<'a, T> ExactSizeIterator for NpyIterator<'a, T> where T: NpyData {}
 
 /// This trait is often automatically implemented by a `#[derive(NpyData)]`
 pub trait NpyData : Sized {
