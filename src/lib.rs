@@ -82,11 +82,12 @@ extern crate nom;
 mod header;
 mod serializable;
 mod npy_data;
+mod out_file;
 
 pub use serializable::Serializable;
 pub use header::DType;
-pub use npy_data::{NpyData, NpyIterator, from_bytes, to_file};
-
+pub use npy_data::{NpyData, NpyIterator, from_bytes};
+pub use out_file::{to_file, OutFile};
 
 #[cfg(test)]
 mod tests {

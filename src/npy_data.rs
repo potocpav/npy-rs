@@ -1,21 +1,27 @@
 
 use nom::*;
-use std::io::{Result,ErrorKind,Error,Write,BufWriter,Seek,SeekFrom,Cursor};
-use std::fs::File;
+use std::io::{Result,ErrorKind,Error,Write,Cursor};
 use std::marker::PhantomData;
-use byteorder::{WriteBytesExt, LittleEndian};
 
 use header::{DTypeToValue, Value, DType, parse_header};
 
 /// A result of NPY file deserialization.
 ///
 /// It is an iterator to offer a lazy interface in case the data don't fit into memory.
-#[derive(Clone)]
 pub struct NpyIterator<'a, T> {
     cursor: Cursor<&'a [u8]>,
     remaining: usize,
-    // TODO: Handle correctly. T does not need to be Clone for the iterator to be Clone.
     _t: PhantomData<T>
+}
+
+impl<'a, T> Clone for NpyIterator<'a, T> {
+    fn clone(&self) -> Self {
+        NpyIterator {
+            cursor: self.cursor.clone(),
+            remaining: self.remaining,
+            _t: PhantomData,
+        }
+    }
 }
 
 impl<'a, T> NpyIterator<'a, T> {
@@ -60,7 +66,6 @@ pub trait NpyData : Sized {
     /// Write Self in a binary form to a writer.
     fn write_row<W: Write>(&self, writer: &mut W) -> ::std::io::Result<()>;
 }
-
 
 fn cursor_from_bytes<T: NpyData>(bytes: &[u8]) -> Result<(Cursor<&[u8]>, i64)> {
     let (data, header) = match parse_header(bytes) {
@@ -109,69 +114,9 @@ fn cursor_from_bytes<T: NpyData>(bytes: &[u8]) -> Result<(Cursor<&[u8]>, i64)> {
     Ok((Cursor::new(data), n_rows))
 }
 
+
 /// Deserialize a NPY file represented as bytes
-///
-/// TODO: Explanation
 pub fn from_bytes<'a, T: NpyData>(bytes: &'a [u8]) -> ::std::io::Result<NpyIterator<'a, T>> {
     let (cur, n_rows) = cursor_from_bytes::<T>(bytes)?;
     Ok(NpyIterator::new(cur, n_rows as usize))
-}
-
-/// Serialize an iterator over a struct to a NPY file
-///
-/// TODO: Explanation
-pub fn to_file<'a,S,T>(filename: &str, data: T) -> ::std::io::Result<()> where
-        S: NpyData + 'a,
-        T: IntoIterator<Item=&'a S> {
-    let mut fw = BufWriter::new(File::create(filename)?);
-    fw.write(&[0x93u8])?;
-    fw.write(b"NUMPY")?;
-    fw.write(&[0x01u8, 0x00])?;
-    let mut header: Vec<u8> = vec![];
-    header.extend(&b"{'descr': ["[..]);
-
-    for (id, t) in S::get_dtype() {
-
-        if t.shape.len() == 0 {
-            header.extend(format!("('{}', '{}'), ", id, t.ty).as_bytes());
-        } else {
-            let shape_str = t.shape.into_iter().fold(String::new(), |o,n| o + &format!("{},", n));
-            header.extend(format!("('{}', '{}', ({})), ", id, t.ty, shape_str).as_bytes());
-        }
-    }
-
-    header.extend(&b"], 'fortran_order': False, 'shape': ("[..]);
-    let shape_pos = header.len() + 10;
-    let filler = &b"abcdefghijklmnopqrs"[..];
-    header.extend(filler);
-    header.extend(&b",), }"[..]);
-
-    let mut padding: Vec<u8> = vec![];
-    padding.extend(&::std::iter::repeat(b' ').take(15 - ((header.len() + 10) % 16)).collect::<Vec<_>>());
-    padding.extend(&[b'\n']);
-
-    let len = header.len() + padding.len();
-    assert! (len <= ::std::u16::MAX as usize);
-    assert!((len + 10) % 16 == 0);
-
-    fw.write_u16::<LittleEndian>(len as u16)?;
-    fw.write(&header)?;
-    // Padding to 8 bytes
-    fw.write(&padding)?;
-
-    // Write data
-    let mut num = 0usize;
-    for row in data {
-        num += 1;
-        row.write_row(&mut fw)?;
-    }
-
-    // Write the size to the header
-    fw.seek(SeekFrom::Start(shape_pos as u64))?;
-    let length = format!("{}", num);
-    fw.write(length.as_bytes())?;
-    fw.write(&b",), }"[..])?;
-    fw.write(&::std::iter::repeat(b' ').take(filler.len() - length.len()).collect::<Vec<_>>())?;
-
-    Ok(())
 }
