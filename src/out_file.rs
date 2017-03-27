@@ -10,7 +10,8 @@ use npy_data::NpyData;
 
 const FILLER: &'static [u8] = &[42; 19];
 
-/// Save to a file iteratively
+/// Serialize into a file one row at a time. To serialize an iterator, use the
+/// [`to_file`](fn.to_file.html) function.
 pub struct OutFile<Row: NpyData> {
     shape_pos: usize,
     len: usize,
@@ -20,7 +21,7 @@ pub struct OutFile<Row: NpyData> {
 
 
 impl<Row: NpyData> OutFile<Row> {
-    /// Open a file for writing
+    /// Open a file
     pub fn open<P: AsRef<Path>>(path: P) -> io::Result<Self> {
         let mut fw = BufWriter::new(File::create(path)?);
         fw.write(&[0x93u8])?;
@@ -65,7 +66,7 @@ impl<Row: NpyData> OutFile<Row> {
         })
     }
 
-    /// Append a single NpyData instance to the file
+    /// Append a single `NpyData` instance to the file
     pub fn push(&mut self, row: &Row) -> io::Result<()> {
         self.len += 1;
         row.write_row(&mut self.fw)
@@ -81,7 +82,7 @@ impl<Row: NpyData> OutFile<Row> {
         Ok(())
     }
 
-    /// Finish writing the file.
+    /// Finish writing the file by finalizing the header and closing the file.
     ///
     /// If omitted, the file will be closed on drop automatically, but it will panic on error.
     pub fn close(mut self) -> io::Result<()> {
@@ -98,7 +99,7 @@ impl<Row: NpyData> Drop for OutFile<Row> {
 
 /// Serialize an iterator over a struct to a NPY file
 ///
-/// A single-statement alternative to saving row by row using the OutFile structure.
+/// A single-statement alternative to saving row by row using the [`OutFile`](struct.OutFile.html).
 pub fn to_file<'a, S, T, P>(filename: P, data: T) -> ::std::io::Result<()> where
         P: AsRef<Path>,
         S: NpyData + 'a,
