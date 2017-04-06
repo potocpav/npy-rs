@@ -92,7 +92,7 @@ impl<Row: NpyData> OutFile<Row> {
 
 impl<Row: NpyData> Drop for OutFile<Row> {
     fn drop(&mut self) {
-        self.close_().unwrap()
+        let _ = self.close_(); // Ignore the errors
     }
 }
 
