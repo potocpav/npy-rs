@@ -7,7 +7,7 @@ use std::io::{Cursor,Read,Write};
 use byteorder::{WriteBytesExt, ReadBytesExt, LittleEndian};
 use npy::{DType,Serializable};
 
-#[derive(NpyData, Debug, PartialEq)]
+#[derive(NpyRecord, Debug, PartialEq)]
 struct Array {
     v_i8: i8,
     v_i16: i16,

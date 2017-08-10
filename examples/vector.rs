@@ -8,7 +8,7 @@ use std::io::{Cursor,Read,Write};
 use byteorder::{WriteBytesExt, ReadBytesExt, LittleEndian};
 use npy::{DType,Serializable};
 
-#[derive(NpyData, Debug)]
+#[derive(NpyRecord, Debug)]
 struct Array {
     vec: Vector5,
 }

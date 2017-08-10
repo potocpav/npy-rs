@@ -14,7 +14,7 @@ read and write *.npy files. Files are handled using iterators, so they don't nee
 Only one-dimensional [structured arrays](https://docs.scipy.org/doc/numpy/user/basics.rec.html) are
 supported at the moment as they map well to Rust structs.
 
-To successfully import an array from NPY using the `#[derive(NpyData)]` mechanism, the target struct
+To successfully import an array from NPY using the `#[derive(NpyRecord)]` mechanism, the target struct
 must contain:
 
 * corresponding number of fields in the same order,
@@ -49,7 +49,7 @@ extern crate npy;
 
 use std::io::Read;
 
-#[derive(NpyData, Debug)]
+#[derive(NpyRecord, Debug)]
 struct Array {
     a: i32,
     b: f32,
@@ -86,7 +86,7 @@ mod out_file;
 
 pub use serializable::Serializable;
 pub use header::DType;
-pub use npy_data::{NpyData, NpyIterator, from_bytes};
+pub use npy_data::{NpyRecord, NpyIterator, NpyData};
 pub use out_file::{to_file, OutFile};
 
 #[cfg(test)]
@@ -96,7 +96,7 @@ mod tests {
     // use super::nom::*;
 
     // #[test]
-    // #[derive(NpyData)]
+    // #[derive(NpyRecord)]
     // struct S {
     //     batchId: i32,
     //     hostHash: i64,
