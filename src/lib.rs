@@ -48,6 +48,7 @@ extern crate npy_derive;
 extern crate npy;
 
 use std::io::Read;
+use npy::NpyData;
 
 #[derive(NpyRecord, Debug)]
 struct Array {
@@ -61,7 +62,8 @@ fn main() {
     std::fs::File::open("examples/simple.npy").unwrap()
         .read_to_end(&mut buf).unwrap();
 
-    for arr in npy::from_bytes::<Array>(&buf).unwrap() {
+    let data: NpyData<Array> = NpyData::from_bytes(&buf).unwrap();
+    for arr in data.iter() {
         println!("{:?}", arr);
     }
 }

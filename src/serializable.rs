@@ -1,6 +1,6 @@
 
-use std::io::{Cursor,Write,Result};
-use byteorder::{WriteBytesExt, ReadBytesExt, LittleEndian};
+use std::io::{Write,Result};
+use byteorder::{WriteBytesExt, LittleEndian};
 use header::DType;
 use byteorder::ByteOrder;
 
@@ -205,8 +205,10 @@ macro_rules! gen_array_serializable {
             #[inline]
             fn read(buf: &[u8]) -> Self {
                 let mut a = [T::default(); $n];
+                let mut off = 0;
                 for i in 0..$n {
-                    a[i] = T::read(buf);
+                    a[i] = T::read(&buf[off..]);
+                    off += T::n_bytes();
                 }
                 a
             }

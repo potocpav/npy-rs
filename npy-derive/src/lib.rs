@@ -1,5 +1,4 @@
 #![recursion_limit = "128"]
-// #![feature(proc_macro)]
 
 /*!
 Derive `trait NpyRecord` for a structure.
@@ -73,6 +72,7 @@ fn impl_npy_data(ast: &syn::DeriveInput) -> quote::Tokens {
                 #( <#types_c2 as ::npy::Serializable>::n_bytes() )+*
             }
 
+            #[allow(unused_assignments)]
             fn read_row(buf: &[u8]) -> Self {
                 let mut offset = 0;
                 #name { #(
