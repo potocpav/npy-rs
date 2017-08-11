@@ -6,6 +6,11 @@ use std::marker::PhantomData;
 use header::{DTypeToValue, Value, DType, parse_header};
 
 
+/// A trait representing a (de-)serializable data-structure
+///
+/// A vector of `NpyRecord`s is always (de-)serialized, so if one wants to serialize a
+/// `Vec<Foo>`, the `Foo` must implement `NpyRecord`.
+///
 /// This trait is often automatically implemented by a `#[derive(NpyRecord)]`
 pub trait NpyRecord : Sized {
     /// Get a vector of pairs (field_name, DType) representing the struct type.
@@ -21,6 +26,12 @@ pub trait NpyRecord : Sized {
     fn write_row<W: Write>(&self, writer: &mut W) -> ::std::io::Result<()>;
 }
 
+/// The data structure representing a deserialized `npy` file
+///
+/// The data is internally stored
+/// as a byte array, and deserialized only on-demand to minimize unnecessary allocations.
+/// The whole contents of the file can be deserialized by the [`to_vec`](#method.to_vec)
+/// member function.
 pub struct NpyData<'a, T> {
     data: &'a [u8],
     n_records: usize,
@@ -34,6 +45,8 @@ impl<'a, T: NpyRecord> NpyData<'a, T> {
         Ok(NpyData { data: data_slice, n_records: n_rows as usize, _t: PhantomData })
     }
 
+    /// Gets a single data-record with the specified index. Returns None, if the index is
+    /// out of bounds
     pub fn get(&self, i: usize) -> Option<T> {
         if i < self.n_records {
             Some(self.get_unchecked(i))
@@ -42,14 +55,17 @@ impl<'a, T: NpyRecord> NpyData<'a, T> {
         }
     }
 
+    /// Returns the total number of records
     pub fn len(&self) -> usize {
         self.n_records
     }
 
+    /// Gets a single data-record wit the specified index. Panics, if the index is out of bounds.
     pub fn get_unchecked(&self, i: usize) -> T {
         T::read_row(&self.data[i * T::n_bytes()..])
     }
 
+    /// Construct a vector with the deserialized contents of the whole file
     pub fn to_vec(&self) -> Vec<T> {
         let mut v = Vec::with_capacity(self.n_records);
         for i in 0..self.n_records {
@@ -57,10 +73,6 @@ impl<'a, T: NpyRecord> NpyData<'a, T> {
         }
         v
     }
-    //
-    // pub fn iter<'b>(&'b self) -> IntoIter<'b, T> {
-    //     IntoIter::new(self)
-    // }
 
     fn get_data_slice(bytes: &[u8]) -> Result<(&[u8], i64)> {
         let (data, header) = match parse_header(bytes) {
