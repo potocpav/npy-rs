@@ -97,17 +97,18 @@ impl<Row: NpyRecord> Drop for OutFile<Row> {
 }
 
 
+// TODO: improve the interface to avoid unnecessary clones
 /// Serialize an iterator over a struct to a NPY file
 ///
 /// A single-statement alternative to saving row by row using the [`OutFile`](struct.OutFile.html).
 pub fn to_file<'a, S, T, P>(filename: P, data: T) -> ::std::io::Result<()> where
         P: AsRef<Path>,
         S: NpyRecord + 'a,
-        T: IntoIterator<Item=&'a S> {
+        T: IntoIterator<Item=S> {
 
     let mut of = OutFile::open(filename)?;
     for row in data {
-        of.push(row)?;
+        of.push(&row)?;
     }
     of.close()
 }

@@ -8,7 +8,7 @@ use std::io::{Read,Write};
 use byteorder::{WriteBytesExt, LittleEndian};
 use npy::{DType,Serializable};
 
-#[derive(NpyRecord, Debug, PartialEq)]
+#[derive(NpyRecord, Debug, PartialEq, Clone)]
 struct Array {
     v_i8: i8,
     v_i16: i16,
@@ -25,7 +25,7 @@ struct Array {
     vec: Vector5,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 struct Vector5(Vec<i32>);
 
 impl Serializable for Vector5 {
@@ -79,7 +79,7 @@ fn roundtrip() {
         arrays.push(a);
     }
 
-    npy::to_file("tests/roundtrip.npy", arrays.iter()).unwrap();
+    npy::to_file("tests/roundtrip.npy", arrays.clone()).unwrap();
 
     let mut buf = vec![];
     std::fs::File::open("tests/roundtrip.npy").unwrap()
