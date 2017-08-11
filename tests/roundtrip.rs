@@ -85,6 +85,6 @@ fn roundtrip() {
     std::fs::File::open("tests/roundtrip.npy").unwrap()
         .read_to_end(&mut buf).unwrap();
 
-    let arrays2 = npy::NpyData::from_bytes(&buf).unwrap().iter().collect::<Vec<_>>();
+    let arrays2 = npy::NpyData::from_bytes(&buf).unwrap().to_vec();
     assert_eq!(arrays, arrays2);
 }

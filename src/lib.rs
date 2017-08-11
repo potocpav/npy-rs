@@ -63,7 +63,7 @@ fn main() {
         .read_to_end(&mut buf).unwrap();
 
     let data: NpyData<Array> = NpyData::from_bytes(&buf).unwrap();
-    for arr in data.iter() {
+    for arr in data {
         println!("{:?}", arr);
     }
 }
@@ -88,7 +88,7 @@ mod out_file;
 
 pub use serializable::Serializable;
 pub use header::DType;
-pub use npy_data::{NpyRecord, NpyIterator, NpyData};
+pub use npy_data::{NpyRecord, NpyData};
 pub use out_file::{to_file, OutFile};
 
 #[cfg(test)]

@@ -23,7 +23,7 @@ fn main() {
     std::fs::File::open("examples/roundtrip.npy").unwrap()
         .read_to_end(&mut buf).unwrap();
 
-    for (i, arr) in npy::NpyData::from_bytes(&buf).unwrap().iter().enumerate() {
+    for (i, arr) in npy::NpyData::from_bytes(&buf).unwrap().into_iter().enumerate() {
         assert_eq!(Array { a: i as i32, b: (i as f32 * 3.14 / 180.0).sin() }, arr);
     }
 }

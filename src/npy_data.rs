@@ -5,49 +5,6 @@ use std::marker::PhantomData;
 
 use header::{DTypeToValue, Value, DType, parse_header};
 
-/// A result of NPY file deserialization.
-///
-/// It is an iterator to offer a lazy interface in case the data don't fit into memory.
-pub struct NpyIterator<'a, T: 'a> {
-    data: &'a NpyData<'a, T>,
-    i: usize,
-    _t: PhantomData<T>
-}
-
-impl<'a, T> Clone for NpyIterator<'a, T> {
-    fn clone(&self) -> Self {
-        NpyIterator {
-            data: &self.data,
-            i: self.i,
-            _t: PhantomData,
-        }
-    }
-}
-
-impl<'a, T> NpyIterator<'a, T> {
-    fn new(data: &'a NpyData<'a, T>) -> Self {
-        NpyIterator {
-            data,
-            i: 0,
-            _t: PhantomData
-        }
-    }
-}
-
-impl<'a, T> Iterator for NpyIterator<'a, T> where T: NpyRecord {
-    type Item = T;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.i += 1;
-        self.data.get(self.i - 1)
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (self.data.len() - self.i, Some(self.data.len() - self.i))
-    }
-}
-
-impl<'a, T> ExactSizeIterator for NpyIterator<'a, T> where T: NpyRecord {}
 
 /// This trait is often automatically implemented by a `#[derive(NpyRecord)]`
 pub trait NpyRecord : Sized {
@@ -100,10 +57,10 @@ impl<'a, T: NpyRecord> NpyData<'a, T> {
         }
         v
     }
-
-    pub fn iter<'b>(&'b self) -> NpyIterator<'b, T> {
-        NpyIterator::new(self)
-    }
+    //
+    // pub fn iter<'b>(&'b self) -> IntoIter<'b, T> {
+    //     IntoIter::new(self)
+    // }
 
     fn get_data_slice(bytes: &[u8]) -> Result<(&[u8], i64)> {
         let (data, header) = match parse_header(bytes) {
@@ -152,3 +109,41 @@ impl<'a, T: NpyRecord> NpyData<'a, T> {
         Ok((data, n_rows))
     }
 }
+
+/// A result of NPY file deserialization.
+///
+/// It is an iterator to offer a lazy interface in case the data don't fit into memory.
+pub struct IntoIter<'a, T: 'a> {
+    data: NpyData<'a, T>,
+    i: usize,
+}
+
+impl<'a, T> IntoIter<'a, T> {
+    fn new(data: NpyData<'a, T>) -> Self {
+        IntoIter { data, i: 0 }
+    }
+}
+
+impl<'a, T: 'a + NpyRecord> IntoIterator for NpyData<'a, T> {
+    type Item = T;
+    type IntoIter = IntoIter<'a, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        IntoIter::new(self)
+    }
+}
+
+impl<'a, T> Iterator for IntoIter<'a, T> where T: NpyRecord {
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.i += 1;
+        self.data.get(self.i - 1)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.data.len() - self.i, Some(self.data.len() - self.i))
+    }
+}
+
+impl<'a, T> ExactSizeIterator for IntoIter<'a, T> where T: NpyRecord {}
