@@ -21,7 +21,7 @@ fn test_data() -> Vec<u8> {
     let mut raw = Vec::new();
     for i in 0..NITER {
         let arr = Array { a: i as i32, b: i as f32 };
-        arr.write_row(&mut raw).unwrap();
+        arr.write(&mut raw).unwrap();
     }
     raw
 }
@@ -31,7 +31,7 @@ fn read_little_endian(b: &mut Bencher) {
     let raw = test_data();
     b.iter(|| {
         for i in 0..NITER {
-            bb(Array::read_row(&raw[i*8..]));
+            bb(Array::read(&raw[i*8..]));
         }
     });
 }

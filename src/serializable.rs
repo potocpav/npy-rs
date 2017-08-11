@@ -4,11 +4,12 @@ use byteorder::{WriteBytesExt, LittleEndian};
 use header::DType;
 use byteorder::ByteOrder;
 
-/// This trait contains information on how to serialize and deserialize a type.
+/// This trait contains information on how to serialize and deserialize a primitive type.
 ///
-/// It must be implemented for every member of a struct that we use as a serialization target,
-/// typically by using `#[derive(NpyRecord)]`. An example illustrating `Serializable` implementation
-/// for a vector is [in this example](https://github.com/potocpav/npy-rs/tree/master/examples/vector.rs).
+/// It must be implemented for every member of a struct that we use as a serialization target via
+/// `#[derive(NpyRecord)]`. An example illustrating a `Serializable` implementation
+/// for a fixed-size vector is
+/// [in this example](https://github.com/potocpav/npy-rs/tree/master/examples/vector.rs).
 pub trait Serializable : Sized {
     /// Convert a type to a structure representing a Numpy type
     fn dtype() -> DType;

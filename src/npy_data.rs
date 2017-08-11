@@ -6,12 +6,12 @@ use std::marker::PhantomData;
 use header::{DTypeToValue, Value, DType, parse_header};
 
 
-/// A trait representing a (de-)serializable data-structure
+/// A trait representing a (de-)serializable data-structure.
 ///
-/// A vector of `NpyRecord`s is always (de-)serialized, so if one wants to serialize a
-/// `Vec<Foo>`, the `Foo` must implement `NpyRecord`.
+/// If one wants to serialize a `Vec<Foo>`, the `Foo` must implement `NpyRecord`.
 ///
-/// This trait is often automatically implemented by a `#[derive(NpyRecord)]`
+/// This trait is often automatically implemented by a `#[derive(NpyRecord)]`. This can be done
+/// for a `struct` where all fields implement [`Serializable`](trait.Serializable.html).
 pub trait NpyRecord : Sized {
     /// Get a vector of pairs (field_name, DType) representing the struct type.
     fn get_dtype() -> Vec<(&'static str, DType)>;
@@ -20,13 +20,13 @@ pub trait NpyRecord : Sized {
     fn n_bytes() -> usize;
 
     /// Deserialize binary data to a single instance of Self
-    fn read_row(buf: &[u8]) -> Self;
+    fn read(&[u8]) -> Self;
 
     /// Write Self in a binary form to a writer.
-    fn write_row<W: Write>(&self, writer: &mut W) -> ::std::io::Result<()>;
+    fn write<W: Write>(&self, writer: &mut W) -> Result<()>;
 }
 
-/// The data structure representing a deserialized `npy` file
+/// The data structure representing a deserialized `npy` file.
 ///
 /// The data is internally stored
 /// as a byte array, and deserialized only on-demand to minimize unnecessary allocations.
@@ -41,8 +41,8 @@ pub struct NpyData<'a, T> {
 impl<'a, T: NpyRecord> NpyData<'a, T> {
     /// Deserialize a NPY file represented as bytes
     pub fn from_bytes(bytes: &'a [u8]) -> ::std::io::Result<NpyData<'a, T>> {
-        let (data_slice, n_rows) = Self::get_data_slice(bytes)?;
-        Ok(NpyData { data: data_slice, n_records: n_rows as usize, _t: PhantomData })
+        let (data_slice, ns) = Self::get_data_slice(bytes)?;
+        Ok(NpyData { data: data_slice, n_records: ns as usize, _t: PhantomData })
     }
 
     /// Gets a single data-record with the specified index. Returns None, if the index is
@@ -62,7 +62,7 @@ impl<'a, T: NpyRecord> NpyData<'a, T> {
 
     /// Gets a single data-record wit the specified index. Panics, if the index is out of bounds.
     pub fn get_unchecked(&self, i: usize) -> T {
-        T::read_row(&self.data[i * T::n_bytes()..])
+        T::read(&self.data[i * T::n_bytes()..])
     }
 
     /// Construct a vector with the deserialized contents of the whole file
@@ -88,7 +88,7 @@ impl<'a, T: NpyRecord> NpyData<'a, T> {
         }?;
 
 
-        let n_rows: i64 =
+        let ns: i64 =
             if let Value::Map(ref map) = header {
                 if let Some(&Value::List(ref l)) = map.get("shape") {
                     if l.len() == 1 {
@@ -118,7 +118,7 @@ impl<'a, T: NpyRecord> NpyData<'a, T> {
             ));
         }
 
-        Ok((data, n_rows))
+        Ok((data, ns))
     }
 }
 

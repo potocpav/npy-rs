@@ -73,7 +73,7 @@ fn impl_npy_data(ast: &syn::DeriveInput) -> quote::Tokens {
             }
 
             #[allow(unused_assignments)]
-            fn read_row(buf: &[u8]) -> Self {
+            fn read(buf: &[u8]) -> Self {
                 let mut offset = 0;
                 #name { #(
                     #idents: {
@@ -84,7 +84,7 @@ fn impl_npy_data(ast: &syn::DeriveInput) -> quote::Tokens {
                 ),* }
             }
 
-            fn write_row<W: ::std::io::Write>(&self, writer: &mut W) -> ::std::io::Result<()> {
+            fn write<W: ::std::io::Write>(&self, writer: &mut W) -> ::std::io::Result<()> {
                 #( ::npy::Serializable::write(&self.#idents_c, writer)?; )*
                 Ok(())
             }

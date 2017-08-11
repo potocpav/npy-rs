@@ -69,7 +69,7 @@ impl<Row: NpyRecord> OutFile<Row> {
     /// Append a single `NpyRecord` instance to the file
     pub fn push(&mut self, row: &Row) -> io::Result<()> {
         self.len += 1;
-        row.write_row(&mut self.fw)
+        row.write(&mut self.fw)
     }
 
     fn close_(&mut self) -> io::Result<()> {
