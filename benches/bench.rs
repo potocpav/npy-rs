@@ -27,7 +27,7 @@ fn test_data() -> Vec<u8> {
 }
 
 #[bench]
-fn read_little_endian(b: &mut Bencher) {
+fn read(b: &mut Bencher) {
     let raw = test_data();
     b.iter(|| {
         for i in 0..NITER {
@@ -37,7 +37,7 @@ fn read_little_endian(b: &mut Bencher) {
 }
 
 #[bench]
-fn write_little_endian(b: &mut Bencher) {
+fn write(b: &mut Bencher) {
     b.iter(|| {
         bb(test_data())
     });
