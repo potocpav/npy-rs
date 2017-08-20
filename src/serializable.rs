@@ -1,19 +1,24 @@
 
-use std::io::{Cursor,Write,Result};
-use byteorder::{WriteBytesExt, ReadBytesExt, LittleEndian};
+use std::io::{Write,Result};
+use byteorder::{WriteBytesExt, LittleEndian};
 use header::DType;
+use byteorder::ByteOrder;
 
-/// This trait contains information on how to serialize and deserialize a type.
+/// This trait contains information on how to serialize and deserialize a primitive type.
 ///
-/// It must be implemented for every member of a struct that we use as a serialization target,
-/// typically by using `#[derive(NpyData)]`. An example illustrating `Serializable` implementation
-/// for a vector is [in this example](https://github.com/potocpav/npy-rs/tree/master/examples/vector.rs).
+/// It must be implemented for every member of a struct that we use as a serialization target via
+/// `#[derive(NpyRecord)]`. An example illustrating a `Serializable` implementation
+/// for a fixed-size vector is
+/// [in this example](https://github.com/potocpav/npy-rs/tree/master/examples/vector.rs).
 pub trait Serializable : Sized {
     /// Convert a type to a structure representing a Numpy type
     fn dtype() -> DType;
 
+    /// Get the number of bytes of the binary repr
+    fn n_bytes() -> usize;
+
     /// Deserialize a single data field, advancing the cursor in the process.
-    fn read(c: &mut Cursor<&[u8]>) -> Result<Self>;
+    fn read(c: &[u8]) -> Self;
 
     /// Serialize a single data field into a writer.
     fn write<W: Write>(&self, writer: &mut W) -> Result<()>;
@@ -25,8 +30,10 @@ impl Serializable for i8 {
         DType { ty: "<i1", shape: vec![] }
     }
     #[inline]
-    fn read(c: &mut Cursor<&[u8]>) -> Result<Self> {
-        c.read_i8()
+    fn n_bytes() -> usize { 1 }
+    #[inline]
+    fn read(buf: &[u8]) -> Self {
+        unsafe { ::std::mem::transmute(buf[0]) } // TODO: a better way
     }
     #[inline]
     fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
@@ -40,8 +47,10 @@ impl Serializable for i16 {
         DType { ty: "<i2", shape: vec![] }
     }
     #[inline]
-    fn read(c: &mut Cursor<&[u8]>) -> Result<Self> {
-        c.read_i16::<LittleEndian>()
+    fn n_bytes() -> usize { 2 }
+    #[inline]
+    fn read(buf: &[u8]) -> Self {
+        LittleEndian::read_i16(buf)
     }
     #[inline]
     fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
@@ -55,8 +64,10 @@ impl Serializable for i32 {
         DType { ty: "<i4", shape: vec![] }
     }
     #[inline]
-    fn read(c: &mut Cursor<&[u8]>) -> Result<Self> {
-        c.read_i32::<LittleEndian>()
+    fn n_bytes() -> usize { 4 }
+    #[inline]
+    fn read(buf: &[u8]) -> Self {
+        LittleEndian::read_i32(buf)
     }
     #[inline]
     fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
@@ -70,8 +81,10 @@ impl Serializable for i64 {
         DType { ty: "<i8", shape: vec![] }
     }
     #[inline]
-    fn read(c: &mut Cursor<&[u8]>) -> Result<Self> {
-        c.read_i64::<LittleEndian>()
+    fn n_bytes() -> usize { 8 }
+    #[inline]
+    fn read(buf: &[u8]) -> Self {
+        LittleEndian::read_i64(buf)
     }
     #[inline]
     fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
@@ -85,8 +98,10 @@ impl Serializable for u8 {
         DType { ty: "<u1", shape: vec![] }
     }
     #[inline]
-    fn read(c: &mut Cursor<&[u8]>) -> Result<Self> {
-        c.read_u8()
+    fn n_bytes() -> usize { 1 }
+    #[inline]
+    fn read(buf: &[u8]) -> Self {
+        buf[0]
     }
     #[inline]
     fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
@@ -100,8 +115,10 @@ impl Serializable for u16 {
         DType { ty: "<u2", shape: vec![] }
     }
     #[inline]
-    fn read(c: &mut Cursor<&[u8]>) -> Result<Self> {
-        c.read_u16::<LittleEndian>()
+    fn n_bytes() -> usize { 2 }
+    #[inline]
+    fn read(buf: &[u8]) -> Self {
+        LittleEndian::read_u16(buf)
     }
     #[inline]
     fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
@@ -115,8 +132,10 @@ impl Serializable for u32 {
         DType { ty: "<u4", shape: vec![] }
     }
     #[inline]
-    fn read(c: &mut Cursor<&[u8]>) -> Result<Self> {
-        c.read_u32::<LittleEndian>()
+    fn n_bytes() -> usize { 4 }
+    #[inline]
+    fn read(buf: &[u8]) -> Self {
+        LittleEndian::read_u32(buf)
     }
     #[inline]
     fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
@@ -130,8 +149,10 @@ impl Serializable for u64 {
         DType { ty: "<u8", shape: vec![] }
     }
     #[inline]
-    fn read(c: &mut Cursor<&[u8]>) -> Result<Self> {
-        c.read_u64::<LittleEndian>()
+    fn n_bytes() -> usize { 8 }
+    #[inline]
+    fn read(buf: &[u8]) -> Self {
+        LittleEndian::read_u64(buf)
     }
     #[inline]
     fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
@@ -145,8 +166,10 @@ impl Serializable for f32 {
         DType { ty: "<f4", shape: vec![] }
     }
     #[inline]
-    fn read(c: &mut Cursor<&[u8]>) -> Result<Self> {
-        c.read_f32::<LittleEndian>()
+    fn n_bytes() -> usize { 4 }
+    #[inline]
+    fn read(buf: &[u8]) -> Self {
+        LittleEndian::read_f32(buf)
     }
     #[inline]
     fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
@@ -160,8 +183,10 @@ impl Serializable for f64 {
         DType { ty: "<f8", shape: vec![] }
     }
     #[inline]
-    fn read(c: &mut Cursor<&[u8]>) -> Result<Self> {
-        c.read_f64::<LittleEndian>()
+    fn n_bytes() -> usize { 8 }
+    #[inline]
+    fn read(buf: &[u8]) -> Self {
+        LittleEndian::read_f64(buf)
     }
     #[inline]
     fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
@@ -177,12 +202,16 @@ macro_rules! gen_array_serializable {
                 DType { ty: T::dtype().ty, shape: T::dtype().shape.into_iter().chain(Some($n)).collect() }
             }
             #[inline]
-            fn read(c: &mut Cursor<&[u8]>) -> Result<Self> {
+            fn n_bytes() -> usize { T::n_bytes() * $n }
+            #[inline]
+            fn read(buf: &[u8]) -> Self {
                 let mut a = [T::default(); $n];
+                let mut off = 0;
                 for i in 0..$n {
-                    a[i] = T::read(c)?;
+                    a[i] = T::read(&buf[off..]);
+                    off += T::n_bytes();
                 }
-                Ok(a)
+                a
             }
             #[inline]
             fn write<W: Write>(&self, writer: &mut W) -> Result<()> {

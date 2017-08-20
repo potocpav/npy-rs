@@ -5,7 +5,7 @@ extern crate npy;
 
 use std::io::Read;
 
-#[derive(NpyData, Debug, PartialEq)]
+#[derive(NpyRecord, Debug, PartialEq, Clone)]
 struct Array {
     a: i32,
     b: f32,
@@ -17,13 +17,13 @@ fn main() {
         arrays.push(Array { a: i, b: (i as f32 * 3.14 / 180.0).sin() });
     }
 
-    npy::to_file("examples/roundtrip.npy", &arrays).unwrap();
+    npy::to_file("examples/roundtrip.npy", arrays).unwrap();
 
     let mut buf = vec![];
     std::fs::File::open("examples/roundtrip.npy").unwrap()
         .read_to_end(&mut buf).unwrap();
 
-    for (i, arr) in npy::from_bytes::<Array>(&buf).unwrap().enumerate() {
+    for (i, arr) in npy::NpyData::from_bytes(&buf).unwrap().into_iter().enumerate() {
         assert_eq!(Array { a: i as i32, b: (i as f32 * 3.14 / 180.0).sin() }, arr);
     }
 }

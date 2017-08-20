@@ -4,11 +4,14 @@ extern crate npy_derive;
 extern crate npy;
 extern crate byteorder;
 
-use std::io::{Cursor,Read,Write};
-use byteorder::{WriteBytesExt, ReadBytesExt, LittleEndian};
+use std::io::{Read,Write};
+use byteorder::{WriteBytesExt, LittleEndian};
 use npy::{DType,Serializable};
+use byteorder::ByteOrder;
 
-#[derive(NpyData, Debug)]
+use npy::NpyData;
+
+#[derive(NpyRecord, Debug)]
 struct Array {
     vec: Vector5,
 }
@@ -24,12 +27,14 @@ impl Serializable for Vector5 {
         DType { ty: "<i4", shape: vec![5] }
     }
 
-    fn read(c: &mut Cursor<&[u8]>) -> std::io::Result<Self> {
+    fn n_bytes() -> usize { 5 * 4 }
+
+    fn read(buf: &[u8]) -> Self {
         let mut ret = Vector5(vec![]);
         for _ in 0..5 {
-            ret.0.push(c.read_i32::<LittleEndian>()?);
+            ret.0.push(LittleEndian::read_i32(buf));
         }
-        Ok(ret)
+        ret
     }
 
     fn write<W: Write>(&self, writer: &mut W) -> std::io::Result<()> {
@@ -51,7 +56,8 @@ fn main() {
     std::fs::File::open("examples/vector.npy").unwrap()
         .read_to_end(&mut buf).unwrap();
 
-    for arr in npy::from_bytes::<Array>(&buf).unwrap() {
+    let data: NpyData<Array> = NpyData::from_bytes(&buf).unwrap();
+    for arr in data {
         println!("{:?}", arr);
     }
 }

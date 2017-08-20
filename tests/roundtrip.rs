@@ -3,11 +3,12 @@ extern crate npy_derive;
 extern crate npy;
 extern crate byteorder;
 
-use std::io::{Cursor,Read,Write};
-use byteorder::{WriteBytesExt, ReadBytesExt, LittleEndian};
+use byteorder::ByteOrder;
+use std::io::{Read,Write};
+use byteorder::{WriteBytesExt, LittleEndian};
 use npy::{DType,Serializable};
 
-#[derive(NpyData, Debug, PartialEq)]
+#[derive(NpyRecord, Debug, PartialEq, Clone)]
 struct Array {
     v_i8: i8,
     v_i16: i16,
@@ -24,7 +25,7 @@ struct Array {
     vec: Vector5,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 struct Vector5(Vec<i32>);
 
 impl Serializable for Vector5 {
@@ -32,12 +33,16 @@ impl Serializable for Vector5 {
         DType { ty: "<i4", shape: vec![5] }
     }
 
-    fn read(c: &mut Cursor<&[u8]>) -> std::io::Result<Self> {
+    fn n_bytes() -> usize { 5 * 4 }
+
+    fn read(buf: &[u8]) -> Self {
         let mut ret = Vector5(vec![]);
+        let mut off = 0;
         for _ in 0..5 {
-            ret.0.push(c.read_i32::<LittleEndian>()?);
+            ret.0.push(LittleEndian::read_i32(&buf[off..]));
+            off += i32::n_bytes();
         }
-        Ok(ret)
+        ret
     }
 
     fn write<W: Write>(&self, writer: &mut W) -> std::io::Result<()> {
@@ -74,12 +79,12 @@ fn roundtrip() {
         arrays.push(a);
     }
 
-    npy::to_file("tests/roundtrip.npy", arrays.iter()).unwrap();
+    npy::to_file("tests/roundtrip.npy", arrays.clone()).unwrap();
 
     let mut buf = vec![];
     std::fs::File::open("tests/roundtrip.npy").unwrap()
         .read_to_end(&mut buf).unwrap();
 
-    let arrays2 = npy::from_bytes::<Array>(&buf).unwrap().collect::<Vec<_>>();
+    let arrays2 = npy::NpyData::from_bytes(&buf).unwrap().to_vec();
     assert_eq!(arrays, arrays2);
 }
