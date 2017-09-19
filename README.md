@@ -29,7 +29,11 @@ extern crate npy_derive;
 extern crate npy;
 ```
 
-Several usage examples are available in the [examples](examples) directory; the [simple](examples/simple.rs) example shows how to load a file, [roundtrip](examples/roundtrip.rs) shows both reading and writing.
+Several usage examples are available in the
+[examples](https://github.com/potocpav/npy-rs/tree/master/examples) directory; the
+[simple](https://github.com/potocpav/npy-rs/blob/master/examples/simple.rs) example shows how to load a file, [roundtrip](https://github.com/potocpav/npy-rs/blob/master/examples/roundtrip.rs) shows both reading
+and writing. Large files can be memory-mapped as illustrated in the 
+[large example](https://github.com/potocpav/npy-rs/blob/master/examples/large.rs).
 
 [Documentation](https://docs.rs/npy/)
 
@@ -38,5 +42,3 @@ Several usage examples are available in the [examples](examples) directory; the 
 Version 0.3 brought ten-fold performance improvements. On my laptop, it now loads and writes files from a ramdisk at approx. 700 MB/s.
 
 Only the header is parsed on the `NpyData::from_bytes` call. The data can then be accessed sequentially by iterating over `NpyData`, randomly by using the `get` function, or the whole file can be deserialized into a `Vec` at once by using the `to_vec` function. Only the third option requires the whole file to fit into the RAM at once.
-
-To load large files, they can be memory-mapped as illustrated in the [large example](examples/large.rs).

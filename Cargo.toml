@@ -1,6 +1,6 @@
 [package]
 name = "npy"
-version = "0.3.1"
+version = "0.3.2"
 authors = ["Pavel Potocek <pavelpotocek@gmail.com>"]
 license = "MIT"
 description = "NumPy file format (de-)serialization"
