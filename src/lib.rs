@@ -64,7 +64,7 @@ fn main() {
 
     let data: NpyData<Array> = NpyData::from_bytes(&buf).unwrap();
     for arr in data {
-        println!("{:?}", arr);
+        eprintln!("{:?}", arr);
     }
 }
 ```
@@ -113,6 +113,6 @@ mod tests {
     //     let file_mmap = Mmap::open_path("test/file.npy", Protection::Read).unwrap();
     //     let bytes: &[u8] = unsafe { file_mmap.as_slice() }; // No concurrent modification allowed
     //     let res: Vec<_> = S::from_bytes(bytes).unwrap().collect();
-    //     println!("{:?}", res);
+    //     eprintln!("{:?}", res);
     // }
 }

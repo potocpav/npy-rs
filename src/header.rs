@@ -16,14 +16,14 @@ pub struct DType {
     pub shape: Vec<u64>,
 }
 
-/// To avoid exporting the to_value function, it is on a separate trait.
+/// To avoid exporting the `to_value` function, it is on a separate trait.
 pub trait DTypeToValue {
     fn to_value(&self, name: &str) -> Value;
 }
 
 impl DTypeToValue for DType {
     fn to_value(&self, name: &str) -> Value {
-        if self.shape.len() == 0 { // scalar
+        if self.shape.is_empty() { // scalar
             Value::List(vec![
                 Value::String(name.into()),
                 Value::String(self.ty.into()),

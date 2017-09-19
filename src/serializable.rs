@@ -207,16 +207,16 @@ macro_rules! gen_array_serializable {
             fn read(buf: &[u8]) -> Self {
                 let mut a = [T::default(); $n];
                 let mut off = 0;
-                for i in 0..$n {
-                    a[i] = T::read(&buf[off..]);
+                for x in &mut a {
+                    *x = T::read(&buf[off..]);
                     off += T::n_bytes();
                 }
                 a
             }
             #[inline]
             fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
-                for i in 0..$n {
-                    self[i].write(writer)?;
+                for item in self {
+                    item.write(writer)?;
                 }
                 Ok(())
             }

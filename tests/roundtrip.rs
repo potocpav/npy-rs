@@ -55,7 +55,7 @@ impl Serializable for Vector5 {
 
 #[test]
 fn roundtrip() {
-    let n = 100;
+    let n = 100i64;
 
     let mut arrays = vec![];
     for i in 0..n {
@@ -72,8 +72,8 @@ fn roundtrip() {
             v_u64: i as u64,
             v_f32: i as f32,
             v_f64: i as f64,
-            v_arr_u32: [0+j,1+j,2+j,3+j,4+j,5+j,6+j],
-            v_mat_u64: [[0+k,1+k,2+k],[3+k,4+k,5+k],[6+k,7+k,8+k],[9+k,10+k,11+k],[12+k,13+k,14+k]],
+            v_arr_u32: [j,1+j,2+j,3+j,4+j,5+j,6+j],
+            v_mat_u64: [[k,1+k,2+k],[3+k,4+k,5+k],[6+k,7+k,8+k],[9+k,10+k,11+k],[12+k,13+k,14+k]],
             vec: Vector5(vec![1,2,3,4,5]),
         };
         arrays.push(a);

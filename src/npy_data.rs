@@ -60,6 +60,11 @@ impl<'a, T: NpyRecord> NpyData<'a, T> {
         self.n_records
     }
 
+    /// Returns whether there are zero records in this NpyData structure
+    pub fn is_empty(&self) -> bool {
+        self.n_records == 0
+    }
+
     /// Gets a single data-record wit the specified index. Panics, if the index is out of bounds.
     pub fn get_unchecked(&self, i: usize) -> T {
         T::read(&self.data[i * T::n_bytes()..])
@@ -98,7 +103,7 @@ impl<'a, T: NpyRecord> NpyData<'a, T> {
                     } else { None }
                 } else { None }
             } else { None }
-            .ok_or(Error::new(ErrorKind::InvalidData,
+            .ok_or_else(|| Error::new(ErrorKind::InvalidData,
                     "\'shape\' field is not present or doesn't consist of a tuple of length 1."))?;
 
         let descr: &[Value] =
@@ -107,10 +112,10 @@ impl<'a, T: NpyRecord> NpyData<'a, T> {
                     Some(l)
                 } else { None }
             } else { None }
-            .ok_or(Error::new(ErrorKind::InvalidData,
+            .ok_or_else(|| Error::new(ErrorKind::InvalidData,
                     "\'descr\' field is not present or doesn't contain a list."))?;
 
-        let expected_type_ast = T::get_dtype().into_iter().map(|(s,dt)| dt.to_value(&s)).collect::<Vec<_>>();
+        let expected_type_ast = T::get_dtype().into_iter().map(|(s,dt)| dt.to_value(s)).collect::<Vec<_>>();
         // TODO: It would be better to compare DType, not Value AST.
         if expected_type_ast != descr {
             return Err(Error::new(ErrorKind::InvalidData,

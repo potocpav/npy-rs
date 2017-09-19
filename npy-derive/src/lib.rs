@@ -60,6 +60,10 @@ fn impl_npy_data(ast: &syn::DeriveInput) -> quote::Tokens {
     let types_c2 = types.clone();
     let types_c3 = types.clone();
 
+    let nats_0 = 0usize..;
+    let nats_1 = 0usize..;
+    let n_fields = types.len();
+
     quote! {
         impl #impl_generics ::npy::NpyRecord for #name #ty_generics #where_clause {
             fn get_dtype() -> Vec<(&'static str, ::npy::DType)> {
@@ -75,12 +79,14 @@ fn impl_npy_data(ast: &syn::DeriveInput) -> quote::Tokens {
             #[allow(unused_assignments)]
             fn read(buf: &[u8]) -> Self {
                 let mut offset = 0;
+                let mut offsets = [0; #n_fields + 1];
+                #(
+                    offset += <#types_c3 as ::npy::Serializable>::n_bytes();
+                    offsets[#nats_0 + 1] = offset;
+                )*
+
                 #name { #(
-                    #idents: {
-                        let x = ::npy::Serializable::read(&buf[offset..]);
-                        offset += <#types_c3 as ::npy::Serializable>::n_bytes();
-                        x
-                    }
+                    #idents: ::npy::Serializable::read(&buf[offsets[#nats_1]..])
                 ),* }
             }
 

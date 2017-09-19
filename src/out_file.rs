@@ -24,9 +24,9 @@ impl<Row: NpyRecord> OutFile<Row> {
     /// Open a file
     pub fn open<P: AsRef<Path>>(path: P) -> io::Result<Self> {
         let mut fw = BufWriter::new(File::create(path)?);
-        fw.write(&[0x93u8])?;
-        fw.write(b"NUMPY")?;
-        fw.write(&[0x01u8, 0x00])?;
+        fw.write_all(&[0x93u8])?;
+        fw.write_all(b"NUMPY")?;
+        fw.write_all(&[0x01u8, 0x00])?;
         let mut header: Vec<u8> = vec![];
         header.extend(&b"{'descr': ["[..]);
 
@@ -51,12 +51,12 @@ impl<Row: NpyRecord> OutFile<Row> {
 
         let len = header.len() + padding.len();
         assert! (len <= ::std::u16::MAX as usize);
-        assert!((len + 10) % 16 == 0);
+        assert_eq!((len + 10) % 16, 0);
 
         fw.write_u16::<LittleEndian>(len as u16)?;
-        fw.write(&header)?;
+        fw.write_all(&header)?;
         // Padding to 8 bytes
-        fw.write(&padding)?;
+        fw.write_all(&padding)?;
 
         Ok(OutFile {
             shape_pos: shape_pos,
@@ -76,9 +76,9 @@ impl<Row: NpyRecord> OutFile<Row> {
         // Write the size to the header
         self.fw.seek(SeekFrom::Start(self.shape_pos as u64))?;
         let length = format!("{}", self.len);
-        self.fw.write(length.as_bytes())?;
-        self.fw.write(&b",), }"[..])?;
-        self.fw.write(&::std::iter::repeat(b' ').take(FILLER.len() - length.len()).collect::<Vec<_>>())?;
+        self.fw.write_all(length.as_bytes())?;
+        self.fw.write_all(&b",), }"[..])?;
+        self.fw.write_all(&::std::iter::repeat(b' ').take(FILLER.len() - length.len()).collect::<Vec<_>>())?;
         Ok(())
     }
 

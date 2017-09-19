@@ -26,6 +26,6 @@ fn main() {
 
     let data: NpyData<Array> = NpyData::from_bytes(&buf).unwrap();
     for arr in data {
-        println!("{:?}", arr);
+        eprintln!("{:?}", arr);
     }
 }
