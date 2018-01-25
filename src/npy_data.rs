@@ -3,19 +3,9 @@ use nom::*;
 use std::io::{Result,ErrorKind,Error,Write};
 use std::marker::PhantomData;
 
-use header::{DTypeToValue, Value, DType, parse_header};
+use header::{DTypeToValue, Value, DType, RecordDType, parse_header};
 use serializable::Serializable;
 
-
-/// Compound Numpy type of a record or plain array
-#[derive(PartialEq, Eq, Debug)]
-pub enum RecordDType {
-    /// A simple array with only a single field
-    Simple(DType),
-
-    /// A structure record array
-    Structured(Vec<(&'static str, DType)>),
-}
 
 /// A trait representing a (de-)serializable data-structure.
 ///

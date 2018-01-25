@@ -39,6 +39,33 @@ impl DTypeToValue for DType {
     }
 }
 
+/// Compound Numpy type of a record or plain array
+#[derive(PartialEq, Eq, Debug)]
+pub enum RecordDType {
+    /// A simple array with only a single field
+    Simple(DType),
+
+    /// A structure record array
+    Structured(Vec<(&'static str, DType)>),
+}
+
+impl RecordDType {
+    pub fn descr(&self) -> String {
+        match *self {
+            RecordDType::Structured(ref fields) =>
+                fields.iter().map(|&(ref id, ref t)|
+                    if t.shape.len() == 0 {
+                        format!("('{}', '{}'), ", id, t.ty)
+                    } else {
+                        let shape_str = t.shape.iter().fold(String::new(), |o,n| o + &format!("{},", n));
+                        format!("('{}', '{}', ({})), ", id, t.ty, shape_str)
+                    })
+                    .fold(String::new(), |o, n| o + &n),
+            _ => unimplemented!()
+        }
+    }
+}
+
 #[derive(PartialEq, Eq, Debug)]
 pub enum Value {
     String(String),
