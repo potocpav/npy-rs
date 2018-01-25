@@ -68,7 +68,7 @@ fn impl_npy_data(ast: &syn::DeriveInput) -> quote::Tokens {
         impl #impl_generics ::npy::NpyRecord for #name #ty_generics #where_clause {
             fn get_dtype() -> ::npy::RecordDType {
                 ::npy::RecordDType::Structured(vec![#( {
-                    (#idents_str_c1, <#types_c1 as ::npy::Serializable>::dtype())
+                    (#idents_str_c1.to_string(), <#types_c1 as ::npy::Serializable>::dtype())
                 } ),*])
             }
 

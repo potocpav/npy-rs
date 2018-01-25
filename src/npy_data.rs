@@ -53,7 +53,7 @@ macro_rules! delegate_npy_record_impl {
     )+ }
 }
 
-delegate_npy_record_impl!(i8, i16, i32, i64, u8, u16, u32, u64);
+delegate_npy_record_impl!(i8, i16, i32, i64, u8, u16, u32, u64, f32, f64);
 
 /// The data structure representing a deserialized `npy` file.
 ///
@@ -145,7 +145,7 @@ impl<'a, T: NpyRecord> NpyData<'a, T> {
                     "\'descr\' field is not present or doesn't contain a list."))?;
 
         if let RecordDType::Structured(dtype) = T::get_dtype() {
-            let expected_type_ast = dtype.into_iter().map(|(s,dt)| dt.to_value(s)).collect::<Vec<_>>();
+            let expected_type_ast = dtype.into_iter().map(|(s,dt)| dt.to_value(&s)).collect::<Vec<_>>();
             // TODO: It would be better to compare DType, not Value AST.
             if expected_type_ast != descr {
                 return Err(Error::new(ErrorKind::InvalidData,

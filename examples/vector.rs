@@ -24,7 +24,7 @@ struct Vector5(Vec<i32>);
 // Serializable.
 impl Serializable for Vector5 {
     fn dtype() -> DType {
-        DType { ty: "<i4", shape: vec![5] }
+        DType { ty: "<i4".to_string(), shape: vec![5] }
     }
 
     fn n_bytes() -> usize { 5 * 4 }

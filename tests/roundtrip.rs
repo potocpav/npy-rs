@@ -30,7 +30,7 @@ struct Vector5(Vec<i32>);
 
 impl Serializable for Vector5 {
     fn dtype() -> DType {
-        DType { ty: "<i4", shape: vec![5] }
+        DType { ty: "<i4".to_string(), shape: vec![5] }
     }
 
     fn n_bytes() -> usize { 5 * 4 }
@@ -88,3 +88,17 @@ fn roundtrip() {
     let arrays2 = npy::NpyData::from_bytes(&buf).unwrap().to_vec();
     assert_eq!(arrays, arrays2);
 }
+
+// #[test]
+// fn roundtrip_with_simple_dtype() {
+//     let array_written = vec![2., 3., 4., 5.];
+
+//     npy::to_file("tests/roundtrip_simple.npy", array_written.clone()).unwrap();
+
+//     let mut buffer = vec![];
+//     std::fs::File::open("tests/roundtrip_simple.npy").unwrap()
+//         .read_to_end(&mut buffer).unwrap();
+
+//     let array_read = npy::NpyData::from_bytes(&buffer).unwrap().to_vec();
+//     assert_eq!(array_written, array_read);
+// }
