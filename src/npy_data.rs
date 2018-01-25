@@ -5,6 +5,10 @@ use std::marker::PhantomData;
 
 use header::{DTypeToValue, Value, DType, parse_header};
 
+pub enum RecordDType {
+    Simple(DType),
+    Structured(Vec<(&'static str, DType)>)
+}
 
 /// A trait representing a (de-)serializable data-structure.
 ///
@@ -14,7 +18,7 @@ use header::{DTypeToValue, Value, DType, parse_header};
 /// for a `struct` where all fields implement [`Serializable`](trait.Serializable.html).
 pub trait NpyRecord : Sized {
     /// Get a vector of pairs (field_name, DType) representing the struct type.
-    fn get_dtype() -> Vec<(&'static str, DType)>;
+    fn get_dtype() -> RecordDType;
 
     /// Get the number of bytes of this record in the serialized representation
     fn n_bytes() -> usize;
@@ -115,12 +119,16 @@ impl<'a, T: NpyRecord> NpyData<'a, T> {
             .ok_or_else(|| Error::new(ErrorKind::InvalidData,
                     "\'descr\' field is not present or doesn't contain a list."))?;
 
-        let expected_type_ast = T::get_dtype().into_iter().map(|(s,dt)| dt.to_value(s)).collect::<Vec<_>>();
-        // TODO: It would be better to compare DType, not Value AST.
-        if expected_type_ast != descr {
-            return Err(Error::new(ErrorKind::InvalidData,
-                format!("Types don't match! type1: {:?}, type2: {:?}", expected_type_ast, descr)
-            ));
+        if let RecordDType::Structured(dtype) = T::get_dtype() {
+            let expected_type_ast = dtype.into_iter().map(|(s,dt)| dt.to_value(s)).collect::<Vec<_>>();
+            // TODO: It would be better to compare DType, not Value AST.
+            if expected_type_ast != descr {
+                return Err(Error::new(ErrorKind::InvalidData,
+                    format!("Types don't match! type1: {:?}, type2: {:?}", expected_type_ast, descr)
+                ));
+            }
+        } else {
+            return Err(Error::new(ErrorKind::InvalidData, format!("simple types not yet supported!")));
         }
 
         Ok((data, ns))

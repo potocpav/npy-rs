@@ -7,6 +7,7 @@ use std::marker::PhantomData;
 use byteorder::{WriteBytesExt, LittleEndian};
 
 use npy_data::NpyRecord;
+use npy_data::RecordDType::*;
 
 const FILLER: &'static [u8] = &[42; 19];
 
@@ -30,7 +31,11 @@ impl<Row: NpyRecord> OutFile<Row> {
         let mut header: Vec<u8> = vec![];
         header.extend(&b"{'descr': ["[..]);
 
-        for (id, t) in Row::get_dtype() {
+        let dtype = match Row::get_dtype() {
+            Simple(_) => unimplemented!("simple dtypes"),
+            Structured(dtype) => dtype
+        };
+        for (id, t) in dtype {
 
             if t.shape.len() == 0 {
                 header.extend(format!("('{}', '{}'), ", id, t.ty).as_bytes());
