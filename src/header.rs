@@ -52,8 +52,9 @@ pub enum RecordDType {
 impl RecordDType {
     /// Numpy format description of record dtype.
     pub fn descr(&self) -> String {
+        use RecordDType::*;
         match *self {
-            RecordDType::Structured(ref fields) =>
+            Structured(ref fields) =>
                 fields.iter()
                     .map(|&(ref id, ref t)|
                         if t.shape.len() == 0 {
@@ -64,7 +65,7 @@ impl RecordDType {
                         }
                     )
                     .fold("[".to_string(), |o, n| o + &n) + "]",
-            _ => unimplemented!()
+            Simple(ref dtype) => format!("'{}'", dtype.ty),
         }
     }
 }
@@ -191,6 +192,12 @@ mod tests {
             ("byte", DType { ty: "<u8", shape: vec![] }),
         ]);
         let expected = "[('float', '>f4'), ('byte', '<u8'), ]";
-        assert_eq!(&dtype.descr(), &expected);
+        assert_eq!(&dtype.descr(), expected);
+    }
+
+    #[test]
+    fn description_of_unstructured_primitive_array() {
+        let dtype = RecordDType::Simple(DType { ty: ">f8", shape: vec![] });
+        assert_eq!(dtype.descr(), "'>f8'");
     }
 }
