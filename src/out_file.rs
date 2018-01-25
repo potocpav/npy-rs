@@ -77,9 +77,9 @@ impl<Row: NpyRecord> OutFile<Row> {
 
 fn create_header(dtype: &RecordDType) -> (Vec<u8>, usize) {
     let mut header: Vec<u8> = vec![];
-    header.extend(&b"{'descr': ["[..]);
+    header.extend(&b"{'descr': "[..]);
     header.extend(dtype.descr().as_bytes());
-    header.extend(&b"], 'fortran_order': False, 'shape': ("[..]);
+    header.extend(&b", 'fortran_order': False, 'shape': ("[..]);
     let shape_pos = header.len() + 10;
     header.extend(FILLER);
     header.extend(&b",), }"[..]);

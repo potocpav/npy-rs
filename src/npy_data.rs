@@ -3,7 +3,7 @@ use nom::*;
 use std::io::{Result,ErrorKind,Error,Write};
 use std::marker::PhantomData;
 
-use header::{DTypeToValue, Value, DType, RecordDType, parse_header};
+use header::{DTypeToValue, Value, RecordDType, parse_header};
 use serializable::Serializable;
 
 

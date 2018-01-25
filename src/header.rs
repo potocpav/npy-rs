@@ -50,17 +50,20 @@ pub enum RecordDType {
 }
 
 impl RecordDType {
+    /// Numpy format description of record dtype.
     pub fn descr(&self) -> String {
         match *self {
             RecordDType::Structured(ref fields) =>
-                fields.iter().map(|&(ref id, ref t)|
-                    if t.shape.len() == 0 {
-                        format!("('{}', '{}'), ", id, t.ty)
-                    } else {
-                        let shape_str = t.shape.iter().fold(String::new(), |o,n| o + &format!("{},", n));
-                        format!("('{}', '{}', ({})), ", id, t.ty, shape_str)
-                    })
-                    .fold(String::new(), |o, n| o + &n),
+                fields.iter()
+                    .map(|&(ref id, ref t)|
+                        if t.shape.len() == 0 {
+                            format!("('{}', '{}'), ", id, t.ty)
+                        } else {
+                            let shape_str = t.shape.iter().fold(String::new(), |o,n| o + &format!("{},", n));
+                            format!("('{}', '{}', ({})), ", id, t.ty, shape_str)
+                        }
+                    )
+                    .fold("[".to_string(), |o, n| o + &n) + "]",
             _ => unimplemented!()
         }
     }
@@ -176,3 +179,18 @@ mod parser {
 //     assert_eq!(list(b" (1 , 2 ,)"), IResult::Done(&b""[..], List(vec![Integer(1), Integer(2)])));
 //     assert_eq!(list(b" [5 , 6 , 7]"), IResult::Done(&b""[..], List(vec![Integer(5), Integer(6), Integer(7)])));
 // }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn description_of_record_array_as_python_list_of_tuples() {
+        let dtype = RecordDType::Structured(vec![
+            ("float", DType { ty: ">f4", shape: vec![] }),
+            ("byte", DType { ty: "<u8", shape: vec![] }),
+        ]);
+        let expected = "[('float', '>f4'), ('byte', '<u8'), ]";
+        assert_eq!(&dtype.descr(), &expected);
+    }
+}
