@@ -3,6 +3,7 @@ use nom::IResult;
 use std::collections::HashMap;
 
 /// Representation of a Numpy type
+#[derive(PartialEq, Eq, Debug)]
 pub struct DType {
     /// Numpy type string. First character is `'>'` for big endian, `'<'` for little endian.
     ///

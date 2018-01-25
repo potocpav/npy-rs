@@ -4,10 +4,17 @@ use std::io::{Result,ErrorKind,Error,Write};
 use std::marker::PhantomData;
 
 use header::{DTypeToValue, Value, DType, parse_header};
+use serializable::Serializable;
 
+
+/// Compound Numpy type of a record or plain array
+#[derive(PartialEq, Eq, Debug)]
 pub enum RecordDType {
+    /// A simple array with only a single field
     Simple(DType),
-    Structured(Vec<(&'static str, DType)>)
+
+    /// A structure record array
+    Structured(Vec<(&'static str, DType)>),
 }
 
 /// A trait representing a (de-)serializable data-structure.
@@ -29,6 +36,34 @@ pub trait NpyRecord : Sized {
     /// Write Self in a binary form to a writer.
     fn write<W: Write>(&self, writer: &mut W) -> Result<()>;
 }
+
+macro_rules! delegate_npy_record_impl {
+    ($($type:ident),+) => { $(
+        impl NpyRecord for $type {
+            #[inline]
+            fn get_dtype() -> RecordDType {
+                RecordDType::Simple(Self::dtype())
+            }
+
+            #[inline]
+            fn n_bytes() -> usize {
+                <Self as Serializable>::n_bytes()
+            }
+
+            #[inline]
+            fn read(bytes: &[u8]) -> Self {
+                <Self as Serializable>::read(bytes)
+            }
+
+            #[inline]
+            fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
+                <Self as Serializable>::write(&self, writer)
+            }
+        }
+    )+ }
+}
+
+delegate_npy_record_impl!(i8, i16, i32, i64, u8, u16, u32, u64);
 
 /// The data structure representing a deserialized `npy` file.
 ///
