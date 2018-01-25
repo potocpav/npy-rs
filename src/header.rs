@@ -95,9 +95,32 @@ fn from_list(values: Vec<Value>) -> Result<Vec<(String, DType)>> {
 
 fn convert_field(field: Vec<Value>) -> Result<(String, DType)> {
     use self::Value::String;
-    match (&field[0], &field[1]) {
-        (&String(ref id), &String(ref t)) => Ok((id.clone(), DType { ty: t.clone(), shape: vec![] })),
+    match (&field[0], &field[1], field.len()) {
+        (&String(ref id), &String(ref t), 2) =>
+            Ok((id.clone(), DType { ty: t.clone(), shape: vec![] })),
+        (&String(ref id), &String(ref t), 3) =>
+            Ok((id.clone(), DType { ty: t.clone(), shape: convert_shape(&field[2])? })),
         _ => unimplemented!()
+    }
+}
+
+fn convert_shape(field: &Value) -> Result<Vec<u64>> {
+    if let Value::List(ref lengths) = *field {
+        let mut numbers = vec![];
+        for length in lengths {
+            if let Value::Integer(number) = *length {
+                if number > 0 {
+                    numbers.push(number as u64);
+                } else {
+                    unimplemented!()
+                }
+            } else {
+                unimplemented!()
+            }
+        }
+        Ok(numbers)
+    } else {
+        unimplemented!()
     }
 }
 
@@ -247,6 +270,15 @@ mod tests {
         let expected_dtype = RecordDType::Structured(vec![
             ("a".to_string(), DType { ty: "<u2".to_string(), shape: vec![] }),
             ("b".to_string(), DType { ty: "<f4".to_string(), shape: vec![] }),
+        ]);
+        assert_eq!(RecordDType::from_descr(descr).unwrap(), expected_dtype);
+    }
+
+    #[test]
+    fn record_description_with_onedimenional_field_shape_declaration() {
+        let descr = parser::item(b"[('a', '>f8', (1,))]").to_result().unwrap();
+        let expected_dtype = RecordDType::Structured(vec![
+            ("a".to_string(), DType { ty: ">f8".to_string(), shape: vec![1] }),
         ]);
         assert_eq!(RecordDType::from_descr(descr).unwrap(), expected_dtype);
     }

@@ -3,7 +3,7 @@ use nom::*;
 use std::io::{Result,ErrorKind,Error,Write};
 use std::marker::PhantomData;
 
-use header::{DTypeToValue, Value, RecordDType, parse_header};
+use header::{Value, RecordDType, parse_header};
 use serializable::Serializable;
 
 
@@ -135,25 +135,22 @@ impl<'a, T: NpyRecord> NpyData<'a, T> {
             .ok_or_else(|| Error::new(ErrorKind::InvalidData,
                     "\'shape\' field is not present or doesn't consist of a tuple of length 1."))?;
 
-        let descr: &[Value] =
+        let descr: &Value =
             if let Value::Map(ref map) = header {
-                if let Some(&Value::List(ref l)) = map.get("descr") {
-                    Some(l)
-                } else { None }
+                map.get("descr")
             } else { None }
             .ok_or_else(|| Error::new(ErrorKind::InvalidData,
                     "\'descr\' field is not present or doesn't contain a list."))?;
 
-        if let RecordDType::Structured(dtype) = T::get_dtype() {
-            let expected_type_ast = dtype.into_iter().map(|(s,dt)| dt.to_value(&s)).collect::<Vec<_>>();
-            // TODO: It would be better to compare DType, not Value AST.
-            if expected_type_ast != descr {
+        if let Ok(dtype) = RecordDType::from_descr(descr.clone()) {
+            let expected_dtype = T::get_dtype();
+            if dtype != expected_dtype {
                 return Err(Error::new(ErrorKind::InvalidData,
-                    format!("Types don't match! type1: {:?}, type2: {:?}", expected_type_ast, descr)
+                    format!("Types don't match! type1: {:?}, type2: {:?}", dtype, expected_dtype)
                 ));
             }
         } else {
-            return Err(Error::new(ErrorKind::InvalidData, format!("simple types not yet supported!")));
+            return Err(Error::new(ErrorKind::InvalidData, format!("fail?!?")));
         }
 
         Ok((data, ns))
