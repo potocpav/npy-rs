@@ -23,12 +23,16 @@ pub struct OutFile<Row: NpyRecord> {
 impl<Row: NpyRecord> OutFile<Row> {
     /// Open a file
     pub fn open<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+        let dtype = Row::get_dtype();
+        if let &DType::Plain { ref shape, .. } = &dtype {
+            assert!(shape.len() == 0, "plain non-scalar dtypes not supported");
+        }
         let mut fw = BufWriter::new(File::create(path)?);
         fw.write_all(&[0x93u8])?;
         fw.write_all(b"NUMPY")?;
         fw.write_all(&[0x01u8, 0x00])?;
 
-        let (header, shape_pos) = create_header(&Row::get_dtype());
+        let (header, shape_pos) = create_header(&dtype);
 
         let mut padding: Vec<u8> = vec![];
         padding.extend(&::std::iter::repeat(b' ').take(15 - ((header.len() + 10) % 16)).collect::<Vec<_>>());
