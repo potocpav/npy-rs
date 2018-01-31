@@ -15,7 +15,7 @@ Only one-dimensional arrays are supported. They may either be made of primitive 
 like integers or floating-point numbers or be [structured
 arrays](https://docs.scipy.org/doc/numpy/user/basics.rec.html) that map to Rust structs.
 
-To successfully import an array from NPY using the `#[derive(NpyRecord)]` mechanism, the target struct
+To successfully import an array from NPY using the `#[derive(Serializable)]` mechanism, the target struct
 must contain:
 
 * corresponding number of fields in the same order,
@@ -91,7 +91,7 @@ extern crate npy;
 use std::io::Read;
 use npy::NpyData;
 
-#[derive(NpyRecord, Debug)]
+#[derive(Serializable, Debug)]
 struct Array {
     a: i32,
     b: f32,
@@ -140,7 +140,7 @@ mod tests {
     // use super::nom::*;
 
     // #[test]
-    // #[derive(NpyRecord)]
+    // #[derive(Serializable)]
     // struct S {
     //     batchId: i32,
     //     hostHash: i64,

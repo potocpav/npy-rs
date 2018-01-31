@@ -12,7 +12,7 @@ use npy::NpyData;
 // a = np.array([(1,2.5,4), (2,3.1,5)], dtype=[('a', 'i4'),('b', 'f4'),('c', 'i8')])
 // np.save('examples/simple.npy', a)
 
-#[derive(NpyRecord, Debug)]
+#[derive(Serializable, Debug)]
 struct Array {
     a: i32,
     b: f32,

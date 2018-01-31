@@ -9,7 +9,7 @@ use npy::Serializable;
 use test::Bencher;
 use test::black_box as bb;
 
-#[derive(NpyRecord, Debug, PartialEq)]
+#[derive(Serializable, Debug, PartialEq)]
 struct Array {
     a: i32,
     b: f32,

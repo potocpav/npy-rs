@@ -1,6 +1,4 @@
 
-#[macro_use]
-extern crate npy_derive;
 extern crate npy;
 extern crate byteorder;
 
@@ -10,11 +8,6 @@ use npy::{DType, Serializable};
 use byteorder::ByteOrder;
 
 use npy::NpyData;
-
-#[derive(NpyRecord, Debug)]
-struct Array {
-    vec: Vector5,
-}
 
 #[derive(Debug)]
 struct Vector5(Vec<i32>);
@@ -56,7 +49,7 @@ fn main() {
     std::fs::File::open("examples/vector.npy").unwrap()
         .read_to_end(&mut buf).unwrap();
 
-    let data: NpyData<Array> = NpyData::from_bytes(&buf).unwrap();
+    let data: NpyData<Vector5> = NpyData::from_bytes(&buf).unwrap();
     for arr in data {
         eprintln!("{:?}", arr);
     }
