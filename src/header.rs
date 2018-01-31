@@ -53,36 +53,32 @@ impl DType {
         use DType::*;
         match descr {
             Value::String(string) => Ok(Plain { ty: string, shape: vec![] }),
-            Value::List(values) => Ok(Record(from_list(values)?)),
+            Value::List(ref list) => Ok(Record(convert_list_to_record_fields(list)?)),
             _ => invalid_data("must be string or list")
         }
     }
 }
 
-fn from_list(values: Vec<Value>) -> Result<Vec<(String, DType)>> {
-    let mut pairs = vec![];
-    for value in values {
-        if let Value::List(field) = value {
-            pairs.push(convert_field(field)?);
-        } else {
-            return invalid_data("list must contain list or tuple");
-        }
-    }
-    Ok(pairs)
+fn convert_list_to_record_fields(values: &[Value]) -> Result<Vec<(String, DType)>> {
+    first_error(values.iter()
+        .map(|value| match *value {
+            Value::List(ref tuple) => convert_tuple_to_record_field(tuple),
+            _ => invalid_data("list must contain list or tuple")
+        }))
 }
 
-fn convert_field(field: Vec<Value>) -> Result<(String, DType)> {
+fn convert_tuple_to_record_field(tuple: &[Value]) -> Result<(String, DType)> {
     use self::Value::String;
 
-    match field.len() {
-        2 | 3 => match (&field[0], &field[1]) {
+    match tuple.len() {
+        2 | 3 => match (&tuple[0], &tuple[1]) {
             (&String(ref id), &String(ref t)) =>
                 Ok((id.clone(), DType::Plain {
                     ty: t.clone(),
-                    shape: if field.len() == 2 {
+                    shape: if tuple.len() == 2 {
                         vec![]
                     } else {
-                        convert_shape(&field[2])?
+                        convert_value_to_shape(&tuple[2])?
                     }
                 })),
             _ => invalid_data("list entry must contain strings for id and dtype")
@@ -91,11 +87,23 @@ fn convert_field(field: Vec<Value>) -> Result<(String, DType)> {
     }
 }
 
-fn convert_shape(field: &Value) -> Result<Vec<u64>> {
+fn convert_value_to_shape(field: &Value) -> Result<Vec<u64>> {
     if let Value::List(ref lengths) = *field {
-        first_error(lengths.iter().map(convert_shape_number))
+        first_error(lengths.iter().map(convert_value_to_positive_integer))
     } else {
         invalid_data("shape must be list or tuple")
+    }
+}
+
+fn convert_value_to_positive_integer(number: &Value) -> Result<u64> {
+    if let Value::Integer(number) = *number {
+        if number > 0 {
+            Ok(number as u64)
+        } else {
+            invalid_data("number must be positive")
+        }
+    } else {
+        invalid_data("must be a number")
     }
 }
 
@@ -107,18 +115,6 @@ fn first_error<I, T>(results: I) -> Result<Vec<T>>
         vector.push(result?);
     }
     Ok(vector)
-}
-
-fn convert_shape_number(number: &Value) -> Result<u64> {
-    if let Value::Integer(number) = *number {
-        if number > 0 {
-            Ok(number as u64)
-        } else {
-            invalid_data("number must be positive")
-        }
-    } else {
-        invalid_data("must be a number")
-    }
 }
 
 fn invalid_data<T>(message: &str) -> Result<T> {
@@ -318,18 +314,18 @@ mod tests {
     #[test]
     fn errors_when_shape_is_not_a_list() {
         let no_shape = parse("1");
-        assert!(convert_shape(&no_shape).is_err());
+        assert!(convert_value_to_shape(&no_shape).is_err());
     }
 
     #[test]
     fn errors_when_shape_number_is_not_a_number() {
         let no_number = parse("[]");
-        assert!(convert_shape_number(&no_number).is_err());
+        assert!(convert_value_to_positive_integer(&no_number).is_err());
     }
 
     #[test]
     fn errors_when_shape_number_is_not_positive() {
-        assert!(convert_shape_number(&parse("0")).is_err());
+        assert!(convert_value_to_positive_integer(&parse("0")).is_err());
     }
 
     fn parse(source: &str) -> Value {
