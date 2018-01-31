@@ -80,7 +80,7 @@ impl DType {
         match descr {
             Value::String(string) => Ok(Plain { ty: string, shape: vec![] }),
             Value::List(values) => Ok(Record(from_list(values)?)),
-            _ => unimplemented!()
+            _ => invalid_data("must be string or list")
         }
     }
 }
@@ -91,7 +91,7 @@ fn from_list(values: Vec<Value>) -> Result<Vec<(String, DType)>> {
         if let Value::List(field) = value {
             pairs.push(convert_field(field)?);
         } else {
-            unimplemented!()
+            return invalid_data("list must contain list or tuple");
         }
     }
     Ok(pairs)
@@ -99,33 +99,57 @@ fn from_list(values: Vec<Value>) -> Result<Vec<(String, DType)>> {
 
 fn convert_field(field: Vec<Value>) -> Result<(String, DType)> {
     use self::Value::String;
-    match (&field[0], &field[1], field.len()) {
-        (&String(ref id), &String(ref t), 2) =>
-            Ok((id.clone(), DType::Plain { ty: t.clone(), shape: vec![] })),
-        (&String(ref id), &String(ref t), 3) =>
-            Ok((id.clone(), DType::Plain { ty: t.clone(), shape: convert_shape(&field[2])? })),
-        _ => unimplemented!()
+
+    match field.len() {
+        2 | 3 => match (&field[0], &field[1]) {
+            (&String(ref id), &String(ref t)) =>
+                Ok((id.clone(), DType::Plain {
+                    ty: t.clone(),
+                    shape: if field.len() == 2 {
+                        vec![]
+                    } else {
+                        convert_shape(&field[2])?
+                    }
+                })),
+            _ => invalid_data("list entry must contain strings for id and dtype")
+        },
+        _ => invalid_data("list entry must contain 2 or 3 items")
     }
 }
 
 fn convert_shape(field: &Value) -> Result<Vec<u64>> {
     if let Value::List(ref lengths) = *field {
-        let mut numbers = vec![];
-        for length in lengths {
-            if let Value::Integer(number) = *length {
-                if number > 0 {
-                    numbers.push(number as u64);
-                } else {
-                    unimplemented!()
-                }
-            } else {
-                unimplemented!()
-            }
-        }
-        Ok(numbers)
+        first_error(lengths.iter().map(convert_shape_number))
     } else {
-        unimplemented!()
+        invalid_data("shape must be list or tuple")
     }
+}
+
+fn first_error<I, T>(results: I) -> Result<Vec<T>>
+    where I: IntoIterator<Item=Result<T>>
+{
+    let mut vector = vec![];
+    for result in results {
+        vector.push(result?);
+    }
+    Ok(vector)
+}
+
+fn convert_shape_number(number: &Value) -> Result<u64> {
+    if let Value::Integer(number) = *number {
+        if number > 0 {
+            Ok(number as u64)
+        } else {
+            invalid_data("number must be positive")
+        }
+    } else {
+        invalid_data("must be a number")
+    }
+}
+
+fn invalid_data<T>(message: &str) -> Result<T> {
+    use std::io::{Error, ErrorKind};
+    Err(Error::new(ErrorKind::InvalidData, message.to_string()))
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]
@@ -270,7 +294,7 @@ mod tests {
 
     #[test]
     fn converts_record_description_to_record_dtype() {
-        let descr = parser::item(b"[('a', '<u2'), ('b', '<f4')]").to_result().unwrap();
+        let descr = parse("[('a', '<u2'), ('b', '<f4')]");
         let expected_dtype = DType::Record(vec![
             ("a".to_string(), DType::Plain { ty: "<u2".to_string(), shape: vec![] }),
             ("b".to_string(), DType::Plain { ty: "<f4".to_string(), shape: vec![] }),
@@ -280,10 +304,63 @@ mod tests {
 
     #[test]
     fn record_description_with_onedimenional_field_shape_declaration() {
-        let descr = parser::item(b"[('a', '>f8', (1,))]").to_result().unwrap();
+        let descr = parse("[('a', '>f8', (1,))]");
         let expected_dtype = DType::Record(vec![
             ("a".to_string(), DType::Plain { ty: ">f8".to_string(), shape: vec![1] }),
         ]);
         assert_eq!(DType::from_descr(descr).unwrap(), expected_dtype);
+    }
+
+    #[test]
+    fn errors_on_value_variants_that_cannot_be_converted() {
+        let no_dtype = Value::Bool(false);
+        assert!(DType::from_descr(no_dtype).is_err());
+    }
+
+    #[test]
+    fn errors_when_record_list_does_not_contain_lists() {
+        let faulty_list = parse("['a', 123]");
+        assert!(DType::from_descr(faulty_list).is_err());
+    }
+
+    #[test]
+    fn errors_when_record_list_entry_contains_too_few_items() {
+        let faulty_list = parse("[('a')]");
+        assert!(DType::from_descr(faulty_list).is_err());
+    }
+
+    #[test]
+    fn errors_when_record_list_entry_contains_too_many_items() {
+        let faulty_list = parse("[('a', 1, 2, 3)]");
+        assert!(DType::from_descr(faulty_list).is_err());
+    }
+
+    #[test]
+    fn errors_when_record_list_entry_contains_non_strings_for_id_or_dtype() {
+        let faulty_list = parse("[(1, 2)]");
+        assert!(DType::from_descr(faulty_list).is_err());
+    }
+
+    #[test]
+    fn errors_when_shape_is_not_a_list() {
+        let no_shape = parse("1");
+        assert!(convert_shape(&no_shape).is_err());
+    }
+
+    #[test]
+    fn errors_when_shape_number_is_not_a_number() {
+        let no_number = parse("[]");
+        assert!(convert_shape_number(&no_number).is_err());
+    }
+
+    #[test]
+    fn errors_when_shape_number_is_not_positive() {
+        assert!(convert_shape_number(&parse("0")).is_err());
+    }
+
+    fn parse(source: &str) -> Value {
+        parser::item(source.as_bytes())
+            .to_result()
+            .expect("could not parse Python expression")
     }
 }
