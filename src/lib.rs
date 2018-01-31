@@ -11,8 +11,9 @@ It stores the type, shape and endianness information in a header,
 which is followed by a flat binary data field. This crate offers a simple, mostly type-safe way to
 read and write *.npy files. Files are handled using iterators, so they don't need to fit in memory.
 
-Only one-dimensional [structured arrays](https://docs.scipy.org/doc/numpy/user/basics.rec.html) are
-supported at the moment as they map well to Rust structs.
+Only one-dimensional arrays are supported. They may either be made of primitive numerical types
+like integers or floating-point numbers or be [structured
+arrays](https://docs.scipy.org/doc/numpy/user/basics.rec.html) that map to Rust structs.
 
 To successfully import an array from NPY using the `#[derive(NpyRecord)]` mechanism, the target struct
 must contain:
