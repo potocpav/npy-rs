@@ -87,7 +87,7 @@ mod npy_data;
 mod out_file;
 
 pub use serializable::Serializable;
-pub use header::DType;
+pub use header::{DType, Field};
 pub use npy_data::{NpyRecord, NpyData};
 pub use out_file::{to_file, OutFile};
 
