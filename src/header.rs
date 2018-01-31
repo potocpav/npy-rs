@@ -24,32 +24,6 @@ pub enum DType {
     Record(Vec<(String, DType)>)
 }
 
-/// To avoid exporting the `to_value` function, it is on a separate trait.
-pub trait DTypeToValue {
-    fn to_value(&self, name: &str) -> Value;
-}
-
-impl DTypeToValue for DType {
-    fn to_value(&self, name: &str) -> Value {
-        use DType::*;
-        match *self {
-            Plain { ref shape, ref ty } =>
-                if shape.is_empty() { // scalar
-                    Value::List(vec![
-                        Value::String(name.into()),
-                        Value::String(ty.clone()),
-                    ])
-                } else {
-                    Value::List(vec![
-                        Value::String(name.into()),
-                        Value::String(ty.clone()),
-                        Value::List(shape.iter().map(|&n| Value::Integer(n as i64)).collect::<Vec<_>>()),
-                    ])
-                },
-            Record(_) => unimplemented!("DType::Record -> Value ")
-        }
-    }
-}
 impl DType {
     /// Numpy format description of record dtype.
     pub fn descr(&self) -> String {
