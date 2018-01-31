@@ -5,17 +5,23 @@ use std::io::Result;
 
 /// Representation of a Numpy type
 #[derive(PartialEq, Eq, Debug)]
-pub struct DType {
-    /// Numpy type string. First character is `'>'` for big endian, `'<'` for little endian.
-    ///
-    /// Examples: `>i4`, `<u8`, `>f8`. The number corresponds to the number of bytes.
-    pub ty: String,
+pub enum DType {
+    /// A simple array with only a single field
+    Plain {
+        /// Numpy type string. First character is `'>'` for big endian, `'<'` for little endian.
+        ///
+        /// Examples: `>i4`, `<u8`, `>f8`. The number corresponds to the number of bytes.
+        ty: String,
 
-    /// Shape of a type.
-    ///
-    /// Scalar has zero entries. Otherwise, number of entries == number of dimensions and each
-    /// entry specifies size in the respective dimension.
-    pub shape: Vec<u64>,
+        /// Shape of a type.
+        ///
+        /// Scalar has zero entries. Otherwise, number of entries == number of dimensions and each
+        /// entry specifies size in the respective dimension.
+        shape: Vec<u64>
+    },
+
+    /// A structure record array
+    Record(Vec<(String, DType)>)
 }
 
 /// To avoid exporting the `to_value` function, it is on a separate trait.
@@ -25,57 +31,55 @@ pub trait DTypeToValue {
 
 impl DTypeToValue for DType {
     fn to_value(&self, name: &str) -> Value {
-        if self.shape.is_empty() { // scalar
-            Value::List(vec![
-                Value::String(name.into()),
-                Value::String(self.ty.clone()),
-            ])
-        } else {
-            Value::List(vec![
-                Value::String(name.into()),
-                Value::String(self.ty.clone()),
-                Value::List(self.shape.iter().map(|&n| Value::Integer(n as i64)).collect::<Vec<_>>()),
-            ])
+        use DType::*;
+        match *self {
+            Plain { ref shape, ref ty } =>
+                if shape.is_empty() { // scalar
+                    Value::List(vec![
+                        Value::String(name.into()),
+                        Value::String(ty.clone()),
+                    ])
+                } else {
+                    Value::List(vec![
+                        Value::String(name.into()),
+                        Value::String(ty.clone()),
+                        Value::List(shape.iter().map(|&n| Value::Integer(n as i64)).collect::<Vec<_>>()),
+                    ])
+                },
+            Record(_) => unimplemented!("DType::Record -> Value ")
         }
     }
 }
-
-/// Compound Numpy type of a record or plain array
-#[derive(PartialEq, Eq, Debug)]
-pub enum RecordDType {
-    /// A simple array with only a single field
-    Simple(DType),
-
-    /// A structure record array
-    Structured(Vec<(String, DType)>),
-}
-
-impl RecordDType {
+impl DType {
     /// Numpy format description of record dtype.
     pub fn descr(&self) -> String {
-        use RecordDType::*;
+        use DType::*;
         match *self {
-            Structured(ref fields) =>
+            Record(ref fields) =>
                 fields.iter()
                     .map(|&(ref id, ref t)|
-                        if t.shape.len() == 0 {
-                            format!("('{}', '{}'), ", id, t.ty)
-                        } else {
-                            let shape_str = t.shape.iter().fold(String::new(), |o,n| o + &format!("{},", n));
-                            format!("('{}', '{}', ({})), ", id, t.ty, shape_str)
+                        match *t {
+                            Plain { ref ty, ref shape } =>
+                                if shape.len() == 0 {
+                                    format!("('{}', '{}'), ", id, ty)
+                                } else {
+                                    let shape_str = shape.iter().fold(String::new(), |o,n| o + &format!("{},", n));
+                                    format!("('{}', '{}', ({})), ", id, ty, shape_str)
+                                },
+                            Record(_) => unimplemented!("nested record dtypes")
                         }
                     )
                     .fold("[".to_string(), |o, n| o + &n) + "]",
-            Simple(ref dtype) => format!("'{}'", dtype.ty),
+            Plain { ref ty, .. } => format!("'{}'", ty),
         }
     }
 
     /// Create from description AST
     pub fn from_descr(descr: Value) -> Result<Self> {
-        use RecordDType::*;
+        use DType::*;
         match descr {
-            Value::String(string) => Ok(Simple(DType { ty: string, shape: vec![] })),
-            Value::List(values) => Ok(Structured(from_list(values)?)),
+            Value::String(string) => Ok(Plain { ty: string, shape: vec![] }),
+            Value::List(values) => Ok(Record(from_list(values)?)),
             _ => unimplemented!()
         }
     }
@@ -97,9 +101,9 @@ fn convert_field(field: Vec<Value>) -> Result<(String, DType)> {
     use self::Value::String;
     match (&field[0], &field[1], field.len()) {
         (&String(ref id), &String(ref t), 2) =>
-            Ok((id.clone(), DType { ty: t.clone(), shape: vec![] })),
+            Ok((id.clone(), DType::Plain { ty: t.clone(), shape: vec![] })),
         (&String(ref id), &String(ref t), 3) =>
-            Ok((id.clone(), DType { ty: t.clone(), shape: convert_shape(&field[2])? })),
+            Ok((id.clone(), DType::Plain { ty: t.clone(), shape: convert_shape(&field[2])? })),
         _ => unimplemented!()
     }
 }
@@ -241,9 +245,9 @@ mod tests {
 
     #[test]
     fn description_of_record_array_as_python_list_of_tuples() {
-        let dtype = RecordDType::Structured(vec![
-            ("float".to_string(), DType { ty: ">f4".to_string(), shape: vec![] }),
-            ("byte".to_string(), DType { ty: "<u1".to_string(), shape: vec![] }),
+        let dtype = DType::Record(vec![
+            ("float".to_string(), DType::Plain { ty: ">f4".to_string(), shape: vec![] }),
+            ("byte".to_string(), DType::Plain { ty: "<u1".to_string(), shape: vec![] }),
         ]);
         let expected = "[('float', '>f4'), ('byte', '<u1'), ]";
         assert_eq!(dtype.descr(), expected);
@@ -251,7 +255,7 @@ mod tests {
 
     #[test]
     fn description_of_unstructured_primitive_array() {
-        let dtype = RecordDType::Simple(DType { ty: ">f8".to_string(), shape: vec![] });
+        let dtype = DType::Plain { ty: ">f8".to_string(), shape: vec![] };
         assert_eq!(dtype.descr(), "'>f8'");
     }
 
@@ -259,27 +263,27 @@ mod tests {
     fn converts_simple_description_to_record_dtype() {
         let dtype = ">f8".to_string();
         assert_eq!(
-            RecordDType::from_descr(Value::String(dtype.clone())).unwrap(),
-            RecordDType::Simple(DType { ty: dtype, shape: vec![] })
+            DType::from_descr(Value::String(dtype.clone())).unwrap(),
+            DType::Plain { ty: dtype, shape: vec![] }
         );
     }
 
     #[test]
     fn converts_record_description_to_record_dtype() {
         let descr = parser::item(b"[('a', '<u2'), ('b', '<f4')]").to_result().unwrap();
-        let expected_dtype = RecordDType::Structured(vec![
-            ("a".to_string(), DType { ty: "<u2".to_string(), shape: vec![] }),
-            ("b".to_string(), DType { ty: "<f4".to_string(), shape: vec![] }),
+        let expected_dtype = DType::Record(vec![
+            ("a".to_string(), DType::Plain { ty: "<u2".to_string(), shape: vec![] }),
+            ("b".to_string(), DType::Plain { ty: "<f4".to_string(), shape: vec![] }),
         ]);
-        assert_eq!(RecordDType::from_descr(descr).unwrap(), expected_dtype);
+        assert_eq!(DType::from_descr(descr).unwrap(), expected_dtype);
     }
 
     #[test]
     fn record_description_with_onedimenional_field_shape_declaration() {
         let descr = parser::item(b"[('a', '>f8', (1,))]").to_result().unwrap();
-        let expected_dtype = RecordDType::Structured(vec![
-            ("a".to_string(), DType { ty: ">f8".to_string(), shape: vec![1] }),
+        let expected_dtype = DType::Record(vec![
+            ("a".to_string(), DType::Plain { ty: ">f8".to_string(), shape: vec![1] }),
         ]);
-        assert_eq!(RecordDType::from_descr(descr).unwrap(), expected_dtype);
+        assert_eq!(DType::from_descr(descr).unwrap(), expected_dtype);
     }
 }

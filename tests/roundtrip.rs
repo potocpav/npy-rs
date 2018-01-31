@@ -4,9 +4,9 @@ extern crate npy;
 extern crate byteorder;
 
 use byteorder::ByteOrder;
-use std::io::{Read,Write};
+use std::io::{Read, Write};
 use byteorder::{WriteBytesExt, LittleEndian};
-use npy::{DType,Serializable};
+use npy::{DType, Serializable};
 
 #[derive(NpyRecord, Debug, PartialEq, Clone)]
 struct Array {
@@ -30,7 +30,7 @@ struct Vector5(Vec<i32>);
 
 impl Serializable for Vector5 {
     fn dtype() -> DType {
-        DType { ty: "<i4".to_string(), shape: vec![5] }
+        DType::Plain { ty: "<i4".to_string(), shape: vec![5] }
     }
 
     fn n_bytes() -> usize { 5 * 4 }

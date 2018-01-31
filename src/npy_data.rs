@@ -3,7 +3,7 @@ use nom::*;
 use std::io::{Result,ErrorKind,Error,Write};
 use std::marker::PhantomData;
 
-use header::{Value, RecordDType, parse_header};
+use header::{Value, DType, parse_header};
 use serializable::Serializable;
 
 
@@ -15,7 +15,7 @@ use serializable::Serializable;
 /// for a `struct` where all fields implement [`Serializable`](trait.Serializable.html).
 pub trait NpyRecord : Sized {
     /// Get a vector of pairs (field_name, DType) representing the struct type.
-    fn get_dtype() -> RecordDType;
+    fn get_dtype() -> DType;
 
     /// Get the number of bytes of this record in the serialized representation
     fn n_bytes() -> usize;
@@ -31,8 +31,8 @@ macro_rules! delegate_npy_record_impl {
     ($($type:ident),+) => { $(
         impl NpyRecord for $type {
             #[inline]
-            fn get_dtype() -> RecordDType {
-                RecordDType::Simple(Self::dtype())
+            fn get_dtype() -> DType {
+                Self::dtype()
             }
 
             #[inline]
@@ -142,7 +142,7 @@ impl<'a, T: NpyRecord> NpyData<'a, T> {
             .ok_or_else(|| Error::new(ErrorKind::InvalidData,
                     "\'descr\' field is not present or doesn't contain a list."))?;
 
-        if let Ok(dtype) = RecordDType::from_descr(descr.clone()) {
+        if let Ok(dtype) = DType::from_descr(descr.clone()) {
             let expected_dtype = T::get_dtype();
             if dtype != expected_dtype {
                 return Err(Error::new(ErrorKind::InvalidData,
