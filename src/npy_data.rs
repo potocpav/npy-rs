@@ -1,59 +1,11 @@
 
 use nom::*;
-use std::io::{Result,ErrorKind,Error,Write};
+use std::io::{Result, ErrorKind, Error};
 use std::marker::PhantomData;
 
 use header::{Value, DType, parse_header};
 use serializable::Serializable;
 
-
-/// A trait representing a (de-)serializable data-structure.
-///
-/// If one wants to serialize a `Vec<Foo>`, the `Foo` must implement `NpyRecord`.
-///
-/// This trait is often automatically implemented by a `#[derive(NpyRecord)]`. This can be done
-/// for a `struct` where all fields implement [`Serializable`](trait.Serializable.html).
-pub trait NpyRecord : Sized {
-    /// Get a vector of pairs (field_name, DType) representing the struct type.
-    fn get_dtype() -> DType;
-
-    /// Get the number of bytes of this record in the serialized representation
-    fn n_bytes() -> usize;
-
-    /// Deserialize binary data to a single instance of Self
-    fn read(&[u8]) -> Self;
-
-    /// Write Self in a binary form to a writer.
-    fn write<W: Write>(&self, writer: &mut W) -> Result<()>;
-}
-
-macro_rules! delegate_npy_record_impl {
-    ($($type:ident),+) => { $(
-        impl NpyRecord for $type {
-            #[inline]
-            fn get_dtype() -> DType {
-                Self::dtype()
-            }
-
-            #[inline]
-            fn n_bytes() -> usize {
-                <Self as Serializable>::n_bytes()
-            }
-
-            #[inline]
-            fn read(bytes: &[u8]) -> Self {
-                <Self as Serializable>::read(bytes)
-            }
-
-            #[inline]
-            fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
-                <Self as Serializable>::write(&self, writer)
-            }
-        }
-    )+ }
-}
-
-delegate_npy_record_impl!(i8, i16, i32, i64, u8, u16, u32, u64, f32, f64);
 
 /// The data structure representing a deserialized `npy` file.
 ///
@@ -67,7 +19,7 @@ pub struct NpyData<'a, T> {
     _t: PhantomData<T>,
 }
 
-impl<'a, T: NpyRecord> NpyData<'a, T> {
+impl<'a, T: Serializable> NpyData<'a, T> {
     /// Deserialize a NPY file represented as bytes
     pub fn from_bytes(bytes: &'a [u8]) -> ::std::io::Result<NpyData<'a, T>> {
         let (data_slice, ns) = Self::get_data_slice(bytes)?;
@@ -143,7 +95,7 @@ impl<'a, T: NpyRecord> NpyData<'a, T> {
                     "\'descr\' field is not present or doesn't contain a list."))?;
 
         if let Ok(dtype) = DType::from_descr(descr.clone()) {
-            let expected_dtype = T::get_dtype();
+            let expected_dtype = T::dtype();
             if dtype != expected_dtype {
                 return Err(Error::new(ErrorKind::InvalidData,
                     format!("Types don't match! found: {:?}, expected: {:?}", dtype, expected_dtype)
@@ -171,7 +123,7 @@ impl<'a, T> IntoIter<'a, T> {
     }
 }
 
-impl<'a, T: 'a + NpyRecord> IntoIterator for NpyData<'a, T> {
+impl<'a, T: 'a + Serializable> IntoIterator for NpyData<'a, T> {
     type Item = T;
     type IntoIter = IntoIter<'a, T>;
 
@@ -180,7 +132,7 @@ impl<'a, T: 'a + NpyRecord> IntoIterator for NpyData<'a, T> {
     }
 }
 
-impl<'a, T> Iterator for IntoIter<'a, T> where T: NpyRecord {
+impl<'a, T> Iterator for IntoIter<'a, T> where T: Serializable {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -193,4 +145,4 @@ impl<'a, T> Iterator for IntoIter<'a, T> where T: NpyRecord {
     }
 }
 
-impl<'a, T> ExactSizeIterator for IntoIter<'a, T> where T: NpyRecord {}
+impl<'a, T> ExactSizeIterator for IntoIter<'a, T> where T: Serializable {}

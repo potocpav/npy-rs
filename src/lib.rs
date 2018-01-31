@@ -80,7 +80,7 @@ a = np.array([(1,2.5,4), (2,3.1,5)], dtype=[('a', 'i4'),('b', 'f4'),('c', 'i8')]
 np.save('examples/simple.npy', a)
 ```
 
-To load this in Rust, we need to create a corresponding struct, that derives `NpyRecord`. Make sure
+To load this in Rust, we need to create a corresponding struct, that derives `Serializable`. Make sure
 the field names and types all match up:
 
 ```
@@ -130,7 +130,7 @@ mod out_file;
 
 pub use serializable::Serializable;
 pub use header::{DType, Field};
-pub use npy_data::{NpyRecord, NpyData};
+pub use npy_data::NpyData;
 pub use out_file::{to_file, OutFile};
 
 #[cfg(test)]

@@ -65,8 +65,8 @@ fn impl_npy_data(ast: &syn::DeriveInput) -> quote::Tokens {
     let n_fields = types.len();
 
     quote! {
-        impl #impl_generics ::npy::NpyRecord for #name #ty_generics #where_clause {
-            fn get_dtype() -> ::npy::DType {
+        impl #impl_generics ::npy::Serializable for #name #ty_generics #where_clause {
+            fn dtype() -> ::npy::DType {
                 ::npy::DType::Record(vec![#(
                     ::npy::Field {
                         name: #idents_str_c1.to_string(),
