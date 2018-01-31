@@ -37,11 +37,51 @@ Let's create a simple *.npy file in Python:
 
 ```python
 import numpy as np
+a = np.array([1, 3.5, -6, 2.3])
+np.save('examples/plain.npy', a)
+```
+
+Now, we can load it in Rust:
+
+```
+extern crate npy;
+
+use std::io::Read;
+use npy::NpyData;
+
+fn main() {
+    let mut buf = vec![];
+    std::fs::File::open("examples/plain.npy").unwrap()
+        .read_to_end(&mut buf).unwrap();
+
+    let data: NpyData<f64> = NpyData::from_bytes(&buf).unwrap();
+    for arr in data {
+        eprintln!("{:?}", arr);
+    }
+}
+```
+
+And we can see our data:
+
+```text
+1
+3.5
+-6
+2.3
+```
+
+## Reading structs from record arrays
+
+Let us move on to a slightly more complex task. We create a structured array in Python:
+
+```python
+import numpy as np
 a = np.array([(1,2.5,4), (2,3.1,5)], dtype=[('a', 'i4'),('b', 'f4'),('c', 'i8')])
 np.save('examples/simple.npy', a)
 ```
 
-Now, we can load it in Rust:
+To load this in Rust, we need to create a corresponding struct, that derives `NpyRecord`. Make sure
+the field names and types all match up:
 
 ```
 #[macro_use]
@@ -76,6 +116,7 @@ The output is:
 Array { a: 1, b: 2.5, c: 4 }
 Array { a: 2, b: 3.1, c: 5 }
 ```
+
 */
 
 extern crate byteorder;
