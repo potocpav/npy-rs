@@ -146,7 +146,7 @@ impl<'a, T: NpyRecord> NpyData<'a, T> {
             let expected_dtype = T::get_dtype();
             if dtype != expected_dtype {
                 return Err(Error::new(ErrorKind::InvalidData,
-                    format!("Types don't match! type1: {:?}, type2: {:?}", dtype, expected_dtype)
+                    format!("Types don't match! found: {:?}, expected: {:?}", dtype, expected_dtype)
                 ));
             }
         } else {
