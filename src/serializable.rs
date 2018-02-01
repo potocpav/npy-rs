@@ -27,7 +27,7 @@ pub trait Serializable : Sized {
 impl Serializable for i8 {
     #[inline]
     fn dtype() -> DType {
-        DType { ty: "<i1", shape: vec![] }
+        DType::Plain { ty: "<i1".to_string(), shape: vec![] }
     }
     #[inline]
     fn n_bytes() -> usize { 1 }
@@ -44,7 +44,7 @@ impl Serializable for i8 {
 impl Serializable for i16 {
     #[inline]
     fn dtype() -> DType {
-        DType { ty: "<i2", shape: vec![] }
+        DType::Plain { ty: "<i2".to_string(), shape: vec![] }
     }
     #[inline]
     fn n_bytes() -> usize { 2 }
@@ -61,7 +61,7 @@ impl Serializable for i16 {
 impl Serializable for i32 {
     #[inline]
     fn dtype() -> DType {
-        DType { ty: "<i4", shape: vec![] }
+        DType::Plain { ty: "<i4".to_string(), shape: vec![] }
     }
     #[inline]
     fn n_bytes() -> usize { 4 }
@@ -78,7 +78,7 @@ impl Serializable for i32 {
 impl Serializable for i64 {
     #[inline]
     fn dtype() -> DType {
-        DType { ty: "<i8", shape: vec![] }
+        DType::Plain { ty: "<i8".to_string(), shape: vec![] }
     }
     #[inline]
     fn n_bytes() -> usize { 8 }
@@ -95,7 +95,7 @@ impl Serializable for i64 {
 impl Serializable for u8 {
     #[inline]
     fn dtype() -> DType {
-        DType { ty: "<u1", shape: vec![] }
+        DType::Plain { ty: "<u1".to_string(), shape: vec![] }
     }
     #[inline]
     fn n_bytes() -> usize { 1 }
@@ -112,7 +112,7 @@ impl Serializable for u8 {
 impl Serializable for u16 {
     #[inline]
     fn dtype() -> DType {
-        DType { ty: "<u2", shape: vec![] }
+        DType::Plain { ty: "<u2".to_string(), shape: vec![] }
     }
     #[inline]
     fn n_bytes() -> usize { 2 }
@@ -129,7 +129,7 @@ impl Serializable for u16 {
 impl Serializable for u32 {
     #[inline]
     fn dtype() -> DType {
-        DType { ty: "<u4", shape: vec![] }
+        DType::Plain { ty: "<u4".to_string(), shape: vec![] }
     }
     #[inline]
     fn n_bytes() -> usize { 4 }
@@ -146,7 +146,7 @@ impl Serializable for u32 {
 impl Serializable for u64 {
     #[inline]
     fn dtype() -> DType {
-        DType { ty: "<u8", shape: vec![] }
+        DType::Plain { ty: "<u8".to_string(), shape: vec![] }
     }
     #[inline]
     fn n_bytes() -> usize { 8 }
@@ -163,7 +163,7 @@ impl Serializable for u64 {
 impl Serializable for f32 {
     #[inline]
     fn dtype() -> DType {
-        DType { ty: "<f4", shape: vec![] }
+        DType::Plain { ty: "<f4".to_string(), shape: vec![] }
     }
     #[inline]
     fn n_bytes() -> usize { 4 }
@@ -180,7 +180,7 @@ impl Serializable for f32 {
 impl Serializable for f64 {
     #[inline]
     fn dtype() -> DType {
-        DType { ty: "<f8", shape: vec![] }
+        DType::Plain { ty: "<f8".to_string(), shape: vec![] }
     }
     #[inline]
     fn n_bytes() -> usize { 8 }
@@ -199,7 +199,14 @@ macro_rules! gen_array_serializable {
         impl<T: Serializable + Default + Copy> Serializable for [T; $n] {
             #[inline]
             fn dtype() -> DType {
-                DType { ty: T::dtype().ty, shape: T::dtype().shape.into_iter().chain(Some($n)).collect() }
+                use DType::*;
+                match T::dtype() {
+                    Plain { ref ty, ref shape } => DType::Plain {
+                        ty: ty.clone(),
+                        shape: shape.clone().into_iter().chain(Some($n)).collect()
+                    },
+                    Record(_) => unimplemented!("arrays of nested records")
+                }
             }
             #[inline]
             fn n_bytes() -> usize { T::n_bytes() * $n }

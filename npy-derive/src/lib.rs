@@ -66,10 +66,13 @@ fn impl_npy_data(ast: &syn::DeriveInput) -> quote::Tokens {
 
     quote! {
         impl #impl_generics ::npy::NpyRecord for #name #ty_generics #where_clause {
-            fn get_dtype() -> Vec<(&'static str, ::npy::DType)> {
-                vec![#( {
-                    (#idents_str_c1, <#types_c1 as ::npy::Serializable>::dtype())
-                } ),*]
+            fn get_dtype() -> ::npy::DType {
+                ::npy::DType::Record(vec![#(
+                    ::npy::Field {
+                        name: #idents_str_c1.to_string(),
+                        dtype: <#types_c1 as ::npy::Serializable>::dtype()
+                    }
+                ),*])
             }
 
             fn n_bytes() -> usize {

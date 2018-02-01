@@ -7,6 +7,7 @@ use std::marker::PhantomData;
 use byteorder::{WriteBytesExt, LittleEndian};
 
 use npy_data::NpyRecord;
+use header::DType;
 
 const FILLER: &'static [u8] = &[42; 19];
 
@@ -19,31 +20,19 @@ pub struct OutFile<Row: NpyRecord> {
     _t: PhantomData<Row>
 }
 
-
 impl<Row: NpyRecord> OutFile<Row> {
     /// Open a file
     pub fn open<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+        let dtype = Row::get_dtype();
+        if let &DType::Plain { ref shape, .. } = &dtype {
+            assert!(shape.len() == 0, "plain non-scalar dtypes not supported");
+        }
         let mut fw = BufWriter::new(File::create(path)?);
         fw.write_all(&[0x93u8])?;
         fw.write_all(b"NUMPY")?;
         fw.write_all(&[0x01u8, 0x00])?;
-        let mut header: Vec<u8> = vec![];
-        header.extend(&b"{'descr': ["[..]);
 
-        for (id, t) in Row::get_dtype() {
-
-            if t.shape.len() == 0 {
-                header.extend(format!("('{}', '{}'), ", id, t.ty).as_bytes());
-            } else {
-                let shape_str = t.shape.into_iter().fold(String::new(), |o,n| o + &format!("{},", n));
-                header.extend(format!("('{}', '{}', ({})), ", id, t.ty, shape_str).as_bytes());
-            }
-        }
-
-        header.extend(&b"], 'fortran_order': False, 'shape': ("[..]);
-        let shape_pos = header.len() + 10;
-        header.extend(FILLER);
-        header.extend(&b",), }"[..]);
+        let (header, shape_pos) = create_header(&dtype);
 
         let mut padding: Vec<u8> = vec![];
         padding.extend(&::std::iter::repeat(b' ').take(15 - ((header.len() + 10) % 16)).collect::<Vec<_>>());
@@ -88,6 +77,17 @@ impl<Row: NpyRecord> OutFile<Row> {
     pub fn close(mut self) -> io::Result<()> {
         self.close_()
     }
+}
+
+fn create_header(dtype: &DType) -> (Vec<u8>, usize) {
+    let mut header: Vec<u8> = vec![];
+    header.extend(&b"{'descr': "[..]);
+    header.extend(dtype.descr().as_bytes());
+    header.extend(&b", 'fortran_order': False, 'shape': ("[..]);
+    let shape_pos = header.len() + 10;
+    header.extend(FILLER);
+    header.extend(&b",), }"[..]);
+    (header, shape_pos)
 }
 
 impl<Row: NpyRecord> Drop for OutFile<Row> {

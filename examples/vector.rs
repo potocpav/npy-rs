@@ -4,9 +4,9 @@ extern crate npy_derive;
 extern crate npy;
 extern crate byteorder;
 
-use std::io::{Read,Write};
+use std::io::{Read, Write};
 use byteorder::{WriteBytesExt, LittleEndian};
-use npy::{DType,Serializable};
+use npy::{DType, Serializable};
 use byteorder::ByteOrder;
 
 use npy::NpyData;
@@ -24,7 +24,7 @@ struct Vector5(Vec<i32>);
 // Serializable.
 impl Serializable for Vector5 {
     fn dtype() -> DType {
-        DType { ty: "<i4", shape: vec![5] }
+        DType::Plain { ty: "<i4".to_string(), shape: vec![5] }
     }
 
     fn n_bytes() -> usize { 5 * 4 }

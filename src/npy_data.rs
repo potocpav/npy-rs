@@ -3,7 +3,8 @@ use nom::*;
 use std::io::{Result,ErrorKind,Error,Write};
 use std::marker::PhantomData;
 
-use header::{DTypeToValue, Value, DType, parse_header};
+use header::{Value, DType, parse_header};
+use serializable::Serializable;
 
 
 /// A trait representing a (de-)serializable data-structure.
@@ -14,7 +15,7 @@ use header::{DTypeToValue, Value, DType, parse_header};
 /// for a `struct` where all fields implement [`Serializable`](trait.Serializable.html).
 pub trait NpyRecord : Sized {
     /// Get a vector of pairs (field_name, DType) representing the struct type.
-    fn get_dtype() -> Vec<(&'static str, DType)>;
+    fn get_dtype() -> DType;
 
     /// Get the number of bytes of this record in the serialized representation
     fn n_bytes() -> usize;
@@ -25,6 +26,34 @@ pub trait NpyRecord : Sized {
     /// Write Self in a binary form to a writer.
     fn write<W: Write>(&self, writer: &mut W) -> Result<()>;
 }
+
+macro_rules! delegate_npy_record_impl {
+    ($($type:ident),+) => { $(
+        impl NpyRecord for $type {
+            #[inline]
+            fn get_dtype() -> DType {
+                Self::dtype()
+            }
+
+            #[inline]
+            fn n_bytes() -> usize {
+                <Self as Serializable>::n_bytes()
+            }
+
+            #[inline]
+            fn read(bytes: &[u8]) -> Self {
+                <Self as Serializable>::read(bytes)
+            }
+
+            #[inline]
+            fn write<W: Write>(&self, writer: &mut W) -> Result<()> {
+                <Self as Serializable>::write(&self, writer)
+            }
+        }
+    )+ }
+}
+
+delegate_npy_record_impl!(i8, i16, i32, i64, u8, u16, u32, u64, f32, f64);
 
 /// The data structure representing a deserialized `npy` file.
 ///
@@ -106,21 +135,22 @@ impl<'a, T: NpyRecord> NpyData<'a, T> {
             .ok_or_else(|| Error::new(ErrorKind::InvalidData,
                     "\'shape\' field is not present or doesn't consist of a tuple of length 1."))?;
 
-        let descr: &[Value] =
+        let descr: &Value =
             if let Value::Map(ref map) = header {
-                if let Some(&Value::List(ref l)) = map.get("descr") {
-                    Some(l)
-                } else { None }
+                map.get("descr")
             } else { None }
             .ok_or_else(|| Error::new(ErrorKind::InvalidData,
                     "\'descr\' field is not present or doesn't contain a list."))?;
 
-        let expected_type_ast = T::get_dtype().into_iter().map(|(s,dt)| dt.to_value(s)).collect::<Vec<_>>();
-        // TODO: It would be better to compare DType, not Value AST.
-        if expected_type_ast != descr {
-            return Err(Error::new(ErrorKind::InvalidData,
-                format!("Types don't match! type1: {:?}, type2: {:?}", expected_type_ast, descr)
-            ));
+        if let Ok(dtype) = DType::from_descr(descr.clone()) {
+            let expected_dtype = T::get_dtype();
+            if dtype != expected_dtype {
+                return Err(Error::new(ErrorKind::InvalidData,
+                    format!("Types don't match! found: {:?}, expected: {:?}", dtype, expected_dtype)
+                ));
+            }
+        } else {
+            return Err(Error::new(ErrorKind::InvalidData, format!("fail?!?")));
         }
 
         Ok((data, ns))
