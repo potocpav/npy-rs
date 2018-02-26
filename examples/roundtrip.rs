@@ -5,7 +5,7 @@ extern crate npy;
 
 use std::io::Read;
 
-#[derive(NpyRecord, Debug, PartialEq, Clone)]
+#[derive(Serializable, Debug, PartialEq, Clone)]
 struct Array {
     a: i32,
     b: f32,

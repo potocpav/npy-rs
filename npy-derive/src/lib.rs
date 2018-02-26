@@ -1,9 +1,9 @@
 #![recursion_limit = "128"]
 
 /*!
-Derive `trait NpyRecord` for a structure.
+Derive `trait Serializable` for a structure.
 
-Using this crate, it is enough to `#[derive(NpyRecord)]` on a struct to be able to serialize and
+Using this crate, it is enough to `#[derive(Serializable)]` on a struct to be able to serialize and
 deserialize it. All the fields must implement [`Serializable`](../npy/trait.Serializable.html).
 
 */
@@ -18,7 +18,7 @@ use syn::Body;
 use quote::{Tokens, ToTokens};
 
 /// Macros 1.1-based custom derive function
-#[proc_macro_derive(NpyRecord)]
+#[proc_macro_derive(Serializable)]
 pub fn npy_data(input: TokenStream) -> TokenStream {
     // Construct a string representation of the type definition
     let s = input.to_string();
@@ -36,7 +36,7 @@ pub fn npy_data(input: TokenStream) -> TokenStream {
 fn impl_npy_data(ast: &syn::DeriveInput) -> quote::Tokens {
     let name = &ast.ident;
     let fields = match ast.body {
-        Body::Enum(_) => panic!("#[derive(NpyRecord)] can only be used with structs"),
+        Body::Enum(_) => panic!("#[derive(Serializable)] can only be used with structs"),
         Body::Struct(ref data) => data.fields(),
     };
     // Helper is provided for handling complex generic types correctly and effortlessly
@@ -65,8 +65,8 @@ fn impl_npy_data(ast: &syn::DeriveInput) -> quote::Tokens {
     let n_fields = types.len();
 
     quote! {
-        impl #impl_generics ::npy::NpyRecord for #name #ty_generics #where_clause {
-            fn get_dtype() -> ::npy::DType {
+        impl #impl_generics ::npy::Serializable for #name #ty_generics #where_clause {
+            fn dtype() -> ::npy::DType {
                 ::npy::DType::Record(vec![#(
                     ::npy::Field {
                         name: #idents_str_c1.to_string(),

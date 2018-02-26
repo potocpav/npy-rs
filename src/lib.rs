@@ -15,7 +15,7 @@ Only one-dimensional arrays are supported. They may either be made of primitive 
 like integers or floating-point numbers or be [structured
 arrays](https://docs.scipy.org/doc/numpy/user/basics.rec.html) that map to Rust structs.
 
-To successfully import an array from NPY using the `#[derive(NpyRecord)]` mechanism, the target struct
+To successfully import an array from NPY using the `#[derive(Serializable)]` mechanism, the target struct
 must contain:
 
 * corresponding number of fields in the same order,
@@ -80,7 +80,7 @@ a = np.array([(1,2.5,4), (2,3.1,5)], dtype=[('a', 'i4'),('b', 'f4'),('c', 'i8')]
 np.save('examples/simple.npy', a)
 ```
 
-To load this in Rust, we need to create a corresponding struct, that derives `NpyRecord`. Make sure
+To load this in Rust, we need to create a corresponding struct, that derives `Serializable`. Make sure
 the field names and types all match up:
 
 ```
@@ -91,7 +91,7 @@ extern crate npy;
 use std::io::Read;
 use npy::NpyData;
 
-#[derive(NpyRecord, Debug)]
+#[derive(Serializable, Debug)]
 struct Array {
     a: i32,
     b: f32,
@@ -130,7 +130,7 @@ mod out_file;
 
 pub use serializable::Serializable;
 pub use header::{DType, Field};
-pub use npy_data::{NpyRecord, NpyData};
+pub use npy_data::NpyData;
 pub use out_file::{to_file, OutFile};
 
 #[cfg(test)]
@@ -140,7 +140,7 @@ mod tests {
     // use super::nom::*;
 
     // #[test]
-    // #[derive(NpyRecord)]
+    // #[derive(Serializable)]
     // struct S {
     //     batchId: i32,
     //     hostHash: i64,

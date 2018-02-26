@@ -7,7 +7,7 @@ extern crate npy;
 use memmap::{Mmap, Protection};
 
 
-#[derive(NpyRecord, Debug, Default)]
+#[derive(Serializable, Debug, Default)]
 struct Array {
     a: i32,
     b: f32,
