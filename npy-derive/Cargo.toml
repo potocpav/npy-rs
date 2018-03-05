@@ -1,6 +1,6 @@
 [package]
 name = "npy-derive"
-version = "0.3.1"
+version = "0.4.0"
 authors = ["Pavel Potocek <pavelpotocek@gmail.com>"]
 license = "MIT"
 description = "Macros 1.1 implementation of #[derive(Serializable)] for crate npy"
@@ -10,5 +10,5 @@ repository = "https://github.com/potocpav/npy-rs"
 proc-macro = true
 
 [dependencies]
-quote = "0.3"
-syn = "0.11"
+quote = "0.4"
+syn = "0.12"

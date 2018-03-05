@@ -4,7 +4,8 @@ extern crate memmap;
 extern crate npy_derive;
 extern crate npy;
 
-use memmap::{Mmap, Protection};
+use std::fs::File;
+use memmap::MmapOptions;
 
 
 #[derive(Serializable, Debug, Default)]
@@ -15,11 +16,10 @@ struct Array {
 }
 
 // Use a memory map and iterators, so that this example works for files larger than can fit into RAM
-
 fn main() {
-    let file_mmap = Mmap::open_path("examples/simple.npy", Protection::Read).unwrap();
-    let bytes: &[u8] = unsafe { file_mmap.as_slice() };
-    let data = npy::NpyData::from_bytes(bytes).unwrap();
+    let file = File::open("examples/simple.npy").unwrap();
+    let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
+    let data = npy::NpyData::from_bytes(&mmap[..]).unwrap();
 
     let sum = data.into_iter().fold(Array::default(), |accum, arr: Array| {
         eprintln!("read: {:?}", arr);

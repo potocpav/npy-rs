@@ -11,22 +11,27 @@ It stores the type, shape and endianness information in a header,
 which is followed by a flat binary data field. This crate offers a simple, mostly type-safe way to
 read and write *.npy files. Files are handled using iterators, so they don't need to fit in memory.
 
-Only one-dimensional arrays are supported. They may either be made of primitive numerical types
-like integers or floating-point numbers or be [structured
-arrays](https://docs.scipy.org/doc/numpy/user/basics.rec.html) that map to Rust structs.
+One-dimensional arrays of types that implement the [`Serializable`](trait.Serializable.html) trait
+are supported. These are:
 
-To successfully import an array from NPY using the `#[derive(Serializable)]` mechanism, the target struct
-must contain:
+ * primitive types: `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `f32`, `f64`. These map to the `numpy`
+   types of `int8`, `uint8`, `int16`, etc.
+ * `struct`s annotated as `#[derive(Serializable)]`. These map to `numpy`'s
+     [Structured arrays](https://docs.scipy.org/doc/numpy/user/basics.rec.html). They can contain the
+     following field types:
+   * primitive types,
+   * other [`Serializable`](trait.Serializable.html) structs,
+   * arrays of [`Serializable`](trait.Serializable.html) types (including arrays) of length ≤ 16.
+ * `struct`s with manual [`Serializable`](trait.Serializable.html) implementations. An example
+   this can be found in the [roundtrip test](https://github.com/potocpav/npy-rs/tree/master/tests/roundtrip.rs).
+
+To successfully import an array from NPY using the `#[derive(Serializable)]` mechanism, the target
+struct must contain:
 
 * corresponding number of fields in the same order,
 * corresponding names of fields,
 * compatible field types.
-
-Currently, all the primitive numeric types and arrays of up to 16 elements are supported, though
-they work only with little-endian. To deserialize other types or big-endian values, one must
-manually implement [`Serializable`](trait.Serializable.html). A very common object that (right now)
-requires a manual `impl` is a vector, as illustrated in
-[an example](https://github.com/potocpav/npy-rs/tree/master/examples/vector.rs).
+* only little endian fields
 
 # Examples
 
@@ -55,8 +60,8 @@ fn main() {
         .read_to_end(&mut buf).unwrap();
 
     let data: NpyData<f64> = NpyData::from_bytes(&buf).unwrap();
-    for arr in data {
-        eprintln!("{:?}", arr);
+    for number in data {
+        eprintln!("{}", number);
     }
 }
 ```
@@ -132,29 +137,3 @@ pub use serializable::Serializable;
 pub use header::{DType, Field};
 pub use npy_data::NpyData;
 pub use out_file::{to_file, OutFile};
-
-#[cfg(test)]
-mod tests {
-    // use super::header::*;
-    // use super::header::Value::*;
-    // use super::nom::*;
-
-    // #[test]
-    // #[derive(Serializable)]
-    // struct S {
-    //     batchId: i32,
-    //     hostHash: i64,
-    //     user: i64,
-    //     aggregate: f64,
-    //     label: i8,
-    // }
-
-    //
-    // #[test]
-    // fn from_file() {
-    //     let file_mmap = Mmap::open_path("test/file.npy", Protection::Read).unwrap();
-    //     let bytes: &[u8] = unsafe { file_mmap.as_slice() }; // No concurrent modification allowed
-    //     let res: Vec<_> = S::from_bytes(bytes).unwrap().collect();
-    //     eprintln!("{:?}", res);
-    // }
-}

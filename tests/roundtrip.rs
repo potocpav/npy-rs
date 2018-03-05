@@ -29,12 +29,15 @@ struct Array {
 struct Vector5(Vec<i32>);
 
 impl Serializable for Vector5 {
+    #[inline]
     fn dtype() -> DType {
         DType::Plain { ty: "<i4".to_string(), shape: vec![5] }
     }
 
+    #[inline]
     fn n_bytes() -> usize { 5 * 4 }
 
+    #[inline]
     fn read(buf: &[u8]) -> Self {
         let mut ret = Vector5(vec![]);
         let mut off = 0;
@@ -45,6 +48,7 @@ impl Serializable for Vector5 {
         ret
     }
 
+    #[inline]
     fn write<W: Write>(&self, writer: &mut W) -> std::io::Result<()> {
         for i in 0..5 {
             writer.write_i32::<LittleEndian>(self.0[i])?
@@ -101,4 +105,9 @@ fn roundtrip_with_simple_dtype() {
 
     let array_read = npy::NpyData::from_bytes(&buffer).unwrap().to_vec();
     assert_eq!(array_written, array_read);
+}
+
+#[derive(Serializable, Debug, PartialEq, Clone)]
+struct S {
+    s: [[[i8; 2]; 3]; 4],
 }

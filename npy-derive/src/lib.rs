@@ -14,30 +14,30 @@ extern crate syn;
 extern crate quote;
 
 use proc_macro::TokenStream;
-use syn::Body;
+use syn::Data;
 use quote::{Tokens, ToTokens};
 
 /// Macros 1.1-based custom derive function
 #[proc_macro_derive(Serializable)]
 pub fn npy_data(input: TokenStream) -> TokenStream {
     // Construct a string representation of the type definition
-    let s = input.to_string();
+    // let s = input.to_string();
 
     // Parse the string representation
-    let ast = syn::parse_macro_input(&s).unwrap();
+    let ast = syn::parse(input).unwrap();
 
     // Build the impl
     let expanded = impl_npy_data(&ast);
 
     // Return the generated impl
-    expanded.parse().unwrap()
+    expanded.into()
 }
 
 fn impl_npy_data(ast: &syn::DeriveInput) -> quote::Tokens {
     let name = &ast.ident;
-    let fields = match ast.body {
-        Body::Enum(_) => panic!("#[derive(Serializable)] can only be used with structs"),
-        Body::Struct(ref data) => data.fields(),
+    let fields = match ast.data {
+        Data::Struct(ref data) => &data.fields,
+        _ => panic!("#[derive(Serializable)] can only be used with structs"),
     };
     // Helper is provided for handling complex generic types correctly and effortlessly
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();

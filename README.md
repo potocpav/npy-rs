@@ -17,11 +17,11 @@ read and write *.npy files. Files are handled using iterators, so they don't nee
 To use **npy-rs**, two dependencies must be specified in `Cargo.toml`:
 
 ```toml
-npy = "0.3"
-npy-derive = "0.3"
+npy = "0.4"
+npy-derive = "0.4"
 ```
 
-The second dependency implements the custom `derive` macro. A typical way to import everything needed is:
+A typical way to import everything needed is:
 
 ```rust
 #[macro_use]
@@ -29,16 +29,32 @@ extern crate npy_derive;
 extern crate npy;
 ```
 
+The `npy-derive` dependency is only needed for
+[structured array](https://docs.scipy.org/doc/numpy/user/basics.rec.html)
+serialization.
+
+Data can now be imported from a `*.npy` file:
+
+```rust
+use npy::NpyData;
+
+std::fs::File::open("data.npy").unwrap().read_to_end(&mut buf).unwrap();
+let data: Vec<f64> = NpyData::from_bytes(&buf).unwrap().to_vec();
+
+```
+
+and exported to a `*.npy` file:
+
+```
+npy::to_file("data.npy", data).unwrap();
+```
+
+See the [documentation](https://docs.rs/npy/) for more information.
+
 Several usage examples are available in the
 [examples](https://github.com/potocpav/npy-rs/tree/master/examples) directory; the
 [simple](https://github.com/potocpav/npy-rs/blob/master/examples/simple.rs) example shows how to load a file, [roundtrip](https://github.com/potocpav/npy-rs/blob/master/examples/roundtrip.rs) shows both reading
-and writing. Large files can be memory-mapped as illustrated in the 
+and writing. Large files can be memory-mapped as illustrated in the
 [large example](https://github.com/potocpav/npy-rs/blob/master/examples/large.rs).
 
 [Documentation](https://docs.rs/npy/)
-
-## Performance
-
-Version 0.3 brought ten-fold performance improvements. On my laptop, it now loads and writes files from a ramdisk at approx. 700 MB/s.
-
-Only the header is parsed on the `NpyData::from_bytes` call. The data can then be accessed sequentially by iterating over `NpyData`, randomly by using the `get` function, or the whole file can be deserialized into a `Vec` at once by using the `to_vec` function. Only the third option requires the whole file to fit into the RAM at once.
