@@ -50,7 +50,9 @@ impl DType {
                                     let shape_str = shape.iter().fold(String::new(), |o,n| o + &format!("{},", n));
                                     format!("('{}', '{}', ({})), ", name, ty, shape_str)
                                 },
-                            Record(_) => unimplemented!("nested record dtypes")
+                            ref record@Record(_) => {
+                                    format!("('{}', {}), ", name, record.descr())
+                                },
                         }
                     )
                     .fold("[".to_string(), |o, n| o + &n) + "]",
@@ -78,20 +80,28 @@ fn convert_list_to_record_fields(values: &[Value]) -> Result<Vec<Field>> {
 }
 
 fn convert_tuple_to_record_field(tuple: &[Value]) -> Result<Field> {
-    use self::Value::String;
+    use self::Value::{String,List};
 
     match tuple.len() {
-        2 | 3 => match (&tuple[0], &tuple[1]) {
-            (&String(ref name), &String(ref dtype)) =>
+        2 | 3 => match (&tuple[0], &tuple[1], tuple.get(2)) {
+            (&String(ref name), &String(ref dtype), ref shape) =>
                 Ok(Field { name: name.clone(), dtype: DType::Plain {
                     ty: dtype.clone(),
-                    shape: if tuple.len() == 2 {
-                        vec![]
+                    shape: if let &Some(ref s) = shape {
+                        convert_value_to_shape(s)?
                     } else {
-                        convert_value_to_shape(&tuple[2])?
+                        vec![]
                     }
                 } }),
-            _ => invalid_data("list entry must contain strings for id and dtype")
+            (&String(ref name), &List(ref list), None) =>
+                Ok(Field {
+                    name: name.clone(),
+                    dtype: DType::Record(convert_list_to_record_fields(list)?)
+                }),
+            (&String(_), &List(_), Some(_)) =>
+                invalid_data("nested arrays of Record types are not supported."),
+            _ =>
+                invalid_data("list entry must contain a string for id and a valid dtype")
         },
         _ => invalid_data("list entry must contain 2 or 3 items")
     }
@@ -258,6 +268,22 @@ mod tests {
     }
 
     #[test]
+    fn description_of_nested_record_dtype() {
+        let dtype = DType::Record(vec![
+            Field {
+                name: "parent".to_string(),
+                dtype: DType::Record(vec![
+                    Field {
+                        name: "child".to_string(),
+                        dtype: DType::Plain { ty: "<i4".to_string(), shape: vec![] }
+                    },
+                ]),
+            }
+        ]);
+        assert_eq!(dtype.descr(), "[('parent', [('child', '<i4'), ]), ]");
+    }
+
+    #[test]
     fn converts_simple_description_to_record_dtype() {
         let dtype = ">f8".to_string();
         assert_eq!(
@@ -283,7 +309,7 @@ mod tests {
     }
 
     #[test]
-    fn record_description_with_onedimenional_field_shape_declaration() {
+    fn record_description_with_onedimensional_field_shape_declaration() {
         let descr = parse("[('a', '>f8', (1,))]");
         let expected_dtype = DType::Record(vec![
             Field {
@@ -292,6 +318,30 @@ mod tests {
             }
         ]);
         assert_eq!(DType::from_descr(descr).unwrap(), expected_dtype);
+    }
+
+    #[test]
+    fn record_description_with_nested_record_field() {
+        let descr = parse("[('parent', [('child', '<i4')])]");
+        let expected_dtype = DType::Record(vec![
+            Field {
+                name: "parent".to_string(),
+                dtype: DType::Record(vec![
+                    Field {
+                        name: "child".to_string(),
+                        dtype: DType::Plain { ty: "<i4".to_string(), shape: vec![] }
+                    },
+                ]),
+            }
+        ]);
+        assert_eq!(DType::from_descr(descr).unwrap(), expected_dtype);
+    }
+
+
+    #[test]
+    fn errors_on_nested_record_field_array() {
+        let descr = parse("[('parent', [('child', '<i4')], (2,))]");
+        assert!(DType::from_descr(descr).is_err());
     }
 
     #[test]

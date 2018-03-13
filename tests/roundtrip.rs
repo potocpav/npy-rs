@@ -9,6 +9,12 @@ use byteorder::{WriteBytesExt, LittleEndian};
 use npy::{DType, Serializable};
 
 #[derive(Serializable, Debug, PartialEq, Clone)]
+struct Nested {
+    v1: f32,
+    v2: f32,
+}
+
+#[derive(Serializable, Debug, PartialEq, Clone)]
 struct Array {
     v_i8: i8,
     v_i16: i16,
@@ -23,6 +29,7 @@ struct Array {
     v_arr_u32: [u32;7],
     v_mat_u64: [[u64; 3]; 5],
     vec: Vector5,
+    nested: Nested,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -79,6 +86,7 @@ fn roundtrip() {
             v_arr_u32: [j,1+j,2+j,3+j,4+j,5+j,6+j],
             v_mat_u64: [[k,1+k,2+k],[3+k,4+k,5+k],[6+k,7+k,8+k],[9+k,10+k,11+k],[12+k,13+k,14+k]],
             vec: Vector5(vec![1,2,3,4,5]),
+            nested: Nested { v1: 10.0 * i as f32, v2: i as f32 },
         };
         arrays.push(a);
     }
@@ -105,9 +113,4 @@ fn roundtrip_with_simple_dtype() {
 
     let array_read = npy::NpyData::from_bytes(&buffer).unwrap().to_vec();
     assert_eq!(array_written, array_read);
-}
-
-#[derive(Serializable, Debug, PartialEq, Clone)]
-struct S {
-    s: [[[i8; 2]; 3]; 4],
 }
