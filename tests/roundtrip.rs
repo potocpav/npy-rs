@@ -38,7 +38,7 @@ struct Vector5(Vec<i32>);
 impl Serializable for Vector5 {
     #[inline]
     fn dtype() -> DType {
-        DType::Plain { ty: "<i4".to_string(), shape: vec![5] }
+        DType::Plain { ty: "<i4".parse().unwrap(), shape: vec![5] }
     }
 
     #[inline]
