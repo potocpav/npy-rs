@@ -14,8 +14,8 @@ extern crate syn;
 extern crate quote;
 
 use proc_macro::TokenStream;
+use quote::{ToTokens, Tokens};
 use syn::Data;
-use quote::{Tokens, ToTokens};
 
 /// Macros 1.1-based custom derive function
 #[proc_macro_derive(Serializable)]
@@ -42,19 +42,32 @@ fn impl_npy_data(ast: &syn::DeriveInput) -> quote::Tokens {
     // Helper is provided for handling complex generic types correctly and effortlessly
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
-    let idents = fields.iter().map(|f| {
-        let mut t = Tokens::new();
-        f.ident.clone().expect("Tuple structs not supported").to_tokens(&mut t);
-        t
-    }).collect::<Vec<_>>();
-    let types = fields.iter().map(|f|  {
-        let mut t = Tokens::new();
-        f.ty.to_tokens(&mut t);
-        t
-    }).collect::<Vec<_>>();
+    let idents = fields
+        .iter()
+        .map(|f| {
+            let mut t = Tokens::new();
+            f.ident
+                .clone()
+                .expect("Tuple structs not supported")
+                .to_tokens(&mut t);
+            t
+        })
+        .collect::<Vec<_>>();
+    let types = fields
+        .iter()
+        .map(|f| {
+            let mut t = Tokens::new();
+            f.ty.to_tokens(&mut t);
+            t
+        })
+        .collect::<Vec<_>>();
 
     let idents_c = idents.clone();
-    let idents_str = idents.clone().into_iter().map(|t| t.to_string()).collect::<Vec<_>>();
+    let idents_str = idents
+        .clone()
+        .into_iter()
+        .map(|t| t.to_string())
+        .collect::<Vec<_>>();
     let idents_str_c1 = idents_str.clone();
     let types_c1 = types.clone();
     let types_c2 = types.clone();
