@@ -1,11 +1,9 @@
-
 use nom::*;
-use std::io::{Result, ErrorKind, Error};
+use std::io::{Error, ErrorKind, Result};
 use std::marker::PhantomData;
 
-use header::{Value, DType, parse_header};
+use header::{parse_header, DType, Value};
 use serializable::Serializable;
-
 
 /// The data structure representing a deserialized `npy` file.
 ///
@@ -23,7 +21,11 @@ impl<'a, T: Serializable> NpyData<'a, T> {
     /// Deserialize a NPY file represented as bytes
     pub fn from_bytes(bytes: &'a [u8]) -> ::std::io::Result<NpyData<'a, T>> {
         let (data_slice, ns) = Self::get_data_slice(bytes)?;
-        Ok(NpyData { data: data_slice, n_records: ns as usize, _t: PhantomData })
+        Ok(NpyData {
+            data: data_slice,
+            n_records: ns as usize,
+            _t: PhantomData,
+        })
     }
 
     /// Gets a single data-record with the specified index. Returns None, if the index is
@@ -62,43 +64,58 @@ impl<'a, T: Serializable> NpyData<'a, T> {
 
     fn get_data_slice(bytes: &[u8]) -> Result<(&[u8], i64)> {
         let (data, header) = match parse_header(bytes) {
-            IResult::Done(data, header) => {
-                Ok((data, header))
-            },
+            IResult::Done(data, header) => Ok((data, header)),
             IResult::Incomplete(needed) => {
                 Err(Error::new(ErrorKind::InvalidData, format!("{:?}", needed)))
-            },
-            IResult::Error(err) => {
-                Err(Error::new(ErrorKind::InvalidData, format!("{:?}", err)))
             }
+            IResult::Error(err) => Err(Error::new(ErrorKind::InvalidData, format!("{:?}", err))),
         }?;
 
+        let ns: i64 = if let Value::Map(ref map) = header {
+            if let Some(&Value::List(ref l)) = map.get("shape") {
+                if l.len() == 1 {
+                    if let Some(&Value::Integer(ref n)) = l.get(0) {
+                        Some(*n)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+        .ok_or_else(|| {
+            Error::new(
+                ErrorKind::InvalidData,
+                "\'shape\' field is not present or doesn't consist of a tuple of length 1.",
+            )
+        })?;
 
-        let ns: i64 =
-            if let Value::Map(ref map) = header {
-                if let Some(&Value::List(ref l)) = map.get("shape") {
-                    if l.len() == 1 {
-                        if let Some(&Value::Integer(ref n)) = l.get(0) {
-                            Some(*n)
-                        } else { None }
-                    } else { None }
-                } else { None }
-            } else { None }
-            .ok_or_else(|| Error::new(ErrorKind::InvalidData,
-                    "\'shape\' field is not present or doesn't consist of a tuple of length 1."))?;
-
-        let descr: &Value =
-            if let Value::Map(ref map) = header {
-                map.get("descr")
-            } else { None }
-            .ok_or_else(|| Error::new(ErrorKind::InvalidData,
-                    "\'descr\' field is not present or doesn't contain a list."))?;
+        let descr: &Value = if let Value::Map(ref map) = header {
+            map.get("descr")
+        } else {
+            None
+        }
+        .ok_or_else(|| {
+            Error::new(
+                ErrorKind::InvalidData,
+                "\'descr\' field is not present or doesn't contain a list.",
+            )
+        })?;
 
         if let Ok(dtype) = DType::from_descr(descr.clone()) {
             let expected_dtype = T::dtype();
             if dtype != expected_dtype {
-                return Err(Error::new(ErrorKind::InvalidData,
-                    format!("Types don't match! found: {:?}, expected: {:?}", dtype, expected_dtype)
+                return Err(Error::new(
+                    ErrorKind::InvalidData,
+                    format!(
+                        "Types don't match! found: {:?}, expected: {:?}",
+                        dtype, expected_dtype
+                    ),
                 ));
             }
         } else {
@@ -132,7 +149,10 @@ impl<'a, T: 'a + Serializable> IntoIterator for NpyData<'a, T> {
     }
 }
 
-impl<'a, T> Iterator for IntoIter<'a, T> where T: Serializable {
+impl<'a, T> Iterator for IntoIter<'a, T>
+where
+    T: Serializable,
+{
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {

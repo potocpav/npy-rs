@@ -129,11 +129,11 @@ extern crate byteorder;
 extern crate nom;
 
 mod header;
-mod serializable;
 mod npy_data;
 mod out_file;
+mod serializable;
 
-pub use serializable::Serializable;
 pub use header::{DType, Field};
 pub use npy_data::NpyData;
 pub use out_file::{to_file, OutFile};
+pub use serializable::Serializable;

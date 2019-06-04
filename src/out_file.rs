@@ -1,13 +1,12 @@
-
-use std::io::{self,Write,BufWriter,Seek,SeekFrom};
 use std::fs::File;
-use std::path::Path;
+use std::io::{self, BufWriter, Seek, SeekFrom, Write};
 use std::marker::PhantomData;
+use std::path::Path;
 
-use byteorder::{WriteBytesExt, LittleEndian};
+use byteorder::{LittleEndian, WriteBytesExt};
 
-use serializable::Serializable;
 use header::DType;
+use serializable::Serializable;
 
 const FILLER: &'static [u8] = &[42; 19];
 
@@ -17,7 +16,7 @@ pub struct OutFile<Row: Serializable> {
     shape_pos: usize,
     len: usize,
     fw: BufWriter<File>,
-    _t: PhantomData<Row>
+    _t: PhantomData<Row>,
 }
 
 impl<Row: Serializable> OutFile<Row> {
@@ -35,11 +34,15 @@ impl<Row: Serializable> OutFile<Row> {
         let (header, shape_pos) = create_header(&dtype);
 
         let mut padding: Vec<u8> = vec![];
-        padding.extend(&::std::iter::repeat(b' ').take(15 - ((header.len() + 10) % 16)).collect::<Vec<_>>());
+        padding.extend(
+            &::std::iter::repeat(b' ')
+                .take(15 - ((header.len() + 10) % 16))
+                .collect::<Vec<_>>(),
+        );
         padding.extend(&[b'\n']);
 
         let len = header.len() + padding.len();
-        assert! (len <= ::std::u16::MAX as usize);
+        assert!(len <= ::std::u16::MAX as usize);
         assert_eq!((len + 10) % 16, 0);
 
         fw.write_u16::<LittleEndian>(len as u16)?;
@@ -67,7 +70,11 @@ impl<Row: Serializable> OutFile<Row> {
         let length = format!("{}", self.len);
         self.fw.write_all(length.as_bytes())?;
         self.fw.write_all(&b",), }"[..])?;
-        self.fw.write_all(&::std::iter::repeat(b' ').take(FILLER.len() - length.len()).collect::<Vec<_>>())?;
+        self.fw.write_all(
+            &::std::iter::repeat(b' ')
+                .take(FILLER.len() - length.len())
+                .collect::<Vec<_>>(),
+        )?;
         Ok(())
     }
 
@@ -96,16 +103,16 @@ impl<Row: Serializable> Drop for OutFile<Row> {
     }
 }
 
-
 // TODO: improve the interface to avoid unnecessary clones
 /// Serialize an iterator over a struct to a NPY file
 ///
 /// A single-statement alternative to saving row by row using the [`OutFile`](struct.OutFile.html).
-pub fn to_file<'a, S, T, P>(filename: P, data: T) -> ::std::io::Result<()> where
-        P: AsRef<Path>,
-        S: Serializable + 'a,
-        T: IntoIterator<Item=S> {
-
+pub fn to_file<'a, S, T, P>(filename: P, data: T) -> ::std::io::Result<()>
+where
+    P: AsRef<Path>,
+    S: Serializable + 'a,
+    T: IntoIterator<Item = S>,
+{
     let mut of = OutFile::open(filename)?;
     for row in data {
         of.push(&row)?;

@@ -1,8 +1,7 @@
-
-use std::io::{Write,Result};
-use byteorder::{WriteBytesExt, LittleEndian};
-use header::DType;
 use byteorder::ByteOrder;
+use byteorder::{LittleEndian, WriteBytesExt};
+use header::DType;
+use std::io::{Result, Write};
 
 /// This trait contains information on how to serialize and deserialize a type.
 ///
@@ -10,7 +9,7 @@ use byteorder::ByteOrder;
 /// [the roundtrip test](https://github.com/potocpav/npy-rs/tree/master/tests/roundtrip.rs).
 /// It is strongly advised to annotate the `Serializable` functions as `#[inline]` for good
 /// performance.
-pub trait Serializable : Sized {
+pub trait Serializable: Sized {
     /// Convert a type to a structure representing a Numpy type
     fn dtype() -> DType;
 
@@ -27,10 +26,15 @@ pub trait Serializable : Sized {
 impl Serializable for i8 {
     #[inline]
     fn dtype() -> DType {
-        DType::Plain { ty: "<i1".to_string(), shape: vec![] }
+        DType::Plain {
+            ty: "<i1".to_string(),
+            shape: vec![],
+        }
     }
     #[inline]
-    fn n_bytes() -> usize { 1 }
+    fn n_bytes() -> usize {
+        1
+    }
     #[inline]
     fn read(buf: &[u8]) -> Self {
         unsafe { ::std::mem::transmute(buf[0]) } // TODO: a better way
@@ -44,10 +48,15 @@ impl Serializable for i8 {
 impl Serializable for i16 {
     #[inline]
     fn dtype() -> DType {
-        DType::Plain { ty: "<i2".to_string(), shape: vec![] }
+        DType::Plain {
+            ty: "<i2".to_string(),
+            shape: vec![],
+        }
     }
     #[inline]
-    fn n_bytes() -> usize { 2 }
+    fn n_bytes() -> usize {
+        2
+    }
     #[inline]
     fn read(buf: &[u8]) -> Self {
         LittleEndian::read_i16(buf)
@@ -61,10 +70,15 @@ impl Serializable for i16 {
 impl Serializable for i32 {
     #[inline]
     fn dtype() -> DType {
-        DType::Plain { ty: "<i4".to_string(), shape: vec![] }
+        DType::Plain {
+            ty: "<i4".to_string(),
+            shape: vec![],
+        }
     }
     #[inline]
-    fn n_bytes() -> usize { 4 }
+    fn n_bytes() -> usize {
+        4
+    }
     #[inline]
     fn read(buf: &[u8]) -> Self {
         LittleEndian::read_i32(buf)
@@ -78,10 +92,15 @@ impl Serializable for i32 {
 impl Serializable for i64 {
     #[inline]
     fn dtype() -> DType {
-        DType::Plain { ty: "<i8".to_string(), shape: vec![] }
+        DType::Plain {
+            ty: "<i8".to_string(),
+            shape: vec![],
+        }
     }
     #[inline]
-    fn n_bytes() -> usize { 8 }
+    fn n_bytes() -> usize {
+        8
+    }
     #[inline]
     fn read(buf: &[u8]) -> Self {
         LittleEndian::read_i64(buf)
@@ -95,10 +114,15 @@ impl Serializable for i64 {
 impl Serializable for u8 {
     #[inline]
     fn dtype() -> DType {
-        DType::Plain { ty: "<u1".to_string(), shape: vec![] }
+        DType::Plain {
+            ty: "<u1".to_string(),
+            shape: vec![],
+        }
     }
     #[inline]
-    fn n_bytes() -> usize { 1 }
+    fn n_bytes() -> usize {
+        1
+    }
     #[inline]
     fn read(buf: &[u8]) -> Self {
         buf[0]
@@ -112,10 +136,15 @@ impl Serializable for u8 {
 impl Serializable for u16 {
     #[inline]
     fn dtype() -> DType {
-        DType::Plain { ty: "<u2".to_string(), shape: vec![] }
+        DType::Plain {
+            ty: "<u2".to_string(),
+            shape: vec![],
+        }
     }
     #[inline]
-    fn n_bytes() -> usize { 2 }
+    fn n_bytes() -> usize {
+        2
+    }
     #[inline]
     fn read(buf: &[u8]) -> Self {
         LittleEndian::read_u16(buf)
@@ -129,10 +158,15 @@ impl Serializable for u16 {
 impl Serializable for u32 {
     #[inline]
     fn dtype() -> DType {
-        DType::Plain { ty: "<u4".to_string(), shape: vec![] }
+        DType::Plain {
+            ty: "<u4".to_string(),
+            shape: vec![],
+        }
     }
     #[inline]
-    fn n_bytes() -> usize { 4 }
+    fn n_bytes() -> usize {
+        4
+    }
     #[inline]
     fn read(buf: &[u8]) -> Self {
         LittleEndian::read_u32(buf)
@@ -146,10 +180,15 @@ impl Serializable for u32 {
 impl Serializable for u64 {
     #[inline]
     fn dtype() -> DType {
-        DType::Plain { ty: "<u8".to_string(), shape: vec![] }
+        DType::Plain {
+            ty: "<u8".to_string(),
+            shape: vec![],
+        }
     }
     #[inline]
-    fn n_bytes() -> usize { 8 }
+    fn n_bytes() -> usize {
+        8
+    }
     #[inline]
     fn read(buf: &[u8]) -> Self {
         LittleEndian::read_u64(buf)
@@ -163,10 +202,15 @@ impl Serializable for u64 {
 impl Serializable for f32 {
     #[inline]
     fn dtype() -> DType {
-        DType::Plain { ty: "<f4".to_string(), shape: vec![] }
+        DType::Plain {
+            ty: "<f4".to_string(),
+            shape: vec![],
+        }
     }
     #[inline]
-    fn n_bytes() -> usize { 4 }
+    fn n_bytes() -> usize {
+        4
+    }
     #[inline]
     fn read(buf: &[u8]) -> Self {
         LittleEndian::read_f32(buf)
@@ -180,10 +224,15 @@ impl Serializable for f32 {
 impl Serializable for f64 {
     #[inline]
     fn dtype() -> DType {
-        DType::Plain { ty: "<f8".to_string(), shape: vec![] }
+        DType::Plain {
+            ty: "<f8".to_string(),
+            shape: vec![],
+        }
     }
     #[inline]
-    fn n_bytes() -> usize { 8 }
+    fn n_bytes() -> usize {
+        8
+    }
     #[inline]
     fn read(buf: &[u8]) -> Self {
         LittleEndian::read_f64(buf)
@@ -231,4 +280,4 @@ macro_rules! gen_array_serializable {
     )+ }
 }
 
-gen_array_serializable!(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16);
+gen_array_serializable!(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);

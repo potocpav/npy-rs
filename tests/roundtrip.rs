@@ -1,12 +1,12 @@
 #[macro_use]
 extern crate npy_derive;
-extern crate npy;
 extern crate byteorder;
+extern crate npy;
 
 use byteorder::ByteOrder;
-use std::io::{Read, Write};
-use byteorder::{WriteBytesExt, LittleEndian};
+use byteorder::{LittleEndian, WriteBytesExt};
 use npy::{DType, Serializable};
+use std::io::{Read, Write};
 
 #[derive(Serializable, Debug, PartialEq, Clone)]
 struct Nested {
@@ -26,7 +26,7 @@ struct Array {
     v_u64: u64,
     v_f32: f32,
     v_f64: f64,
-    v_arr_u32: [u32;7],
+    v_arr_u32: [u32; 7],
     v_mat_u64: [[u64; 3]; 5],
     vec: Vector5,
     nested: Nested,
@@ -38,11 +38,16 @@ struct Vector5(Vec<i32>);
 impl Serializable for Vector5 {
     #[inline]
     fn dtype() -> DType {
-        DType::Plain { ty: "<i4".to_string(), shape: vec![5] }
+        DType::Plain {
+            ty: "<i4".to_string(),
+            shape: vec![5],
+        }
     }
 
     #[inline]
-    fn n_bytes() -> usize { 5 * 4 }
+    fn n_bytes() -> usize {
+        5 * 4
+    }
 
     #[inline]
     fn read(buf: &[u8]) -> Self {
@@ -83,10 +88,19 @@ fn roundtrip() {
             v_u64: i as u64,
             v_f32: i as f32,
             v_f64: i as f64,
-            v_arr_u32: [j,1+j,2+j,3+j,4+j,5+j,6+j],
-            v_mat_u64: [[k,1+k,2+k],[3+k,4+k,5+k],[6+k,7+k,8+k],[9+k,10+k,11+k],[12+k,13+k,14+k]],
-            vec: Vector5(vec![1,2,3,4,5]),
-            nested: Nested { v1: 10.0 * i as f32, v2: i as f32 },
+            v_arr_u32: [j, 1 + j, 2 + j, 3 + j, 4 + j, 5 + j, 6 + j],
+            v_mat_u64: [
+                [k, 1 + k, 2 + k],
+                [3 + k, 4 + k, 5 + k],
+                [6 + k, 7 + k, 8 + k],
+                [9 + k, 10 + k, 11 + k],
+                [12 + k, 13 + k, 14 + k],
+            ],
+            vec: Vector5(vec![1, 2, 3, 4, 5]),
+            nested: Nested {
+                v1: 10.0 * i as f32,
+                v2: i as f32,
+            },
         };
         arrays.push(a);
     }
@@ -94,8 +108,10 @@ fn roundtrip() {
     npy::to_file("tests/roundtrip.npy", arrays.clone()).unwrap();
 
     let mut buf = vec![];
-    std::fs::File::open("tests/roundtrip.npy").unwrap()
-        .read_to_end(&mut buf).unwrap();
+    std::fs::File::open("tests/roundtrip.npy")
+        .unwrap()
+        .read_to_end(&mut buf)
+        .unwrap();
 
     let arrays2 = npy::NpyData::from_bytes(&buf).unwrap().to_vec();
     assert_eq!(arrays, arrays2);
@@ -108,8 +124,10 @@ fn roundtrip_with_simple_dtype() {
     npy::to_file("tests/roundtrip_simple.npy", array_written.clone()).unwrap();
 
     let mut buffer = vec![];
-    std::fs::File::open("tests/roundtrip_simple.npy").unwrap()
-        .read_to_end(&mut buffer).unwrap();
+    std::fs::File::open("tests/roundtrip_simple.npy")
+        .unwrap()
+        .read_to_end(&mut buffer)
+        .unwrap();
 
     let array_read = npy::NpyData::from_bytes(&buffer).unwrap().to_vec();
     assert_eq!(array_written, array_read);

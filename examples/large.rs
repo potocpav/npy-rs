@@ -1,12 +1,10 @@
-
 extern crate memmap;
 #[macro_use]
 extern crate npy_derive;
 extern crate npy;
 
-use std::fs::File;
 use memmap::MmapOptions;
-
+use std::fs::File;
 
 #[derive(Serializable, Debug, Default)]
 struct Array {
@@ -21,9 +19,15 @@ fn main() {
     let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
     let data = npy::NpyData::from_bytes(&mmap[..]).unwrap();
 
-    let sum = data.into_iter().fold(Array::default(), |accum, arr: Array| {
-        eprintln!("read: {:?}", arr);
-        Array { a: accum.a + arr.a, b: accum.b + arr.b, c: accum.c + arr.c }
-    });
+    let sum = data
+        .into_iter()
+        .fold(Array::default(), |accum, arr: Array| {
+            eprintln!("read: {:?}", arr);
+            Array {
+                a: accum.a + arr.a,
+                b: accum.b + arr.b,
+                c: accum.c + arr.c,
+            }
+        });
     eprintln!("sum: {:?}", sum);
 }
