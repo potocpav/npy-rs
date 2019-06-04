@@ -20,10 +20,10 @@ are supported. These are:
      [Structured arrays](https://docs.scipy.org/doc/numpy/user/basics.rec.html). They can contain the
      following field types:
    * primitive types,
-   * other [`Serializable`](trait.Serializable.html) structs,
-   * arrays of [`Serializable`](trait.Serializable.html) types (including arrays) of length ≤ 16.
- * `struct`s with manual [`Serializable`](trait.Serializable.html) implementations. An example
-   this can be found in the [roundtrip test](https://github.com/potocpav/npy-rs/tree/master/tests/roundtrip.rs).
+   * other structs that implement the traits,
+   * arrays of types that implement the traits (including arrays) of length ≤ 16.
+ * `struct`s with manual trait implementations. An example of this can be found in the
+   [roundtrip test](https://github.com/potocpav/npy-rs/tree/master/tests/roundtrip.rs).
 
 To successfully import an array from NPY using the `#[derive(Serializable)]` mechanism, the target
 struct must contain:
@@ -85,18 +85,31 @@ a = np.array([(1,2.5,4), (2,3.1,5)], dtype=[('a', 'i4'),('b', 'f4'),('c', 'i8')]
 np.save('examples/simple.npy', a)
 ```
 
-To load this in Rust, we need to create a corresponding struct, that derives `Serializable`. Make sure
-the field names and types all match up:
+To load this in Rust, we need to create a corresponding struct.
+There are three derivable traits we can define for it:
 
+* [`Deserialize`] — Enables easy reading of `.npy` files.
+* [`AutoSerialize`] — Enables easy writing of `.npy` files. (in a default format)
+* [`Serialize`] — Supertrait of `AutoSerialize` that allows one to specify a custom [`DType`].
+
+**Enable the `"derive"` feature in `Cargo.toml`,**
+and make sure the field names and types all match up:
+*/
+
+// It is not currently possible in Cargo.toml to specify that an optional dependency should
+// also be a dev-dependency.  Therefore, we discretely remove this example when generating
+// doctests, so that:
+//    - It always appears in documentation (`cargo doc`)
+//    - It is only tested when the feature is present (`cargo test --features derive`)
+#![cfg_attr(any(not(test), feature="derive"), doc = r##"
 ```
-#[macro_use]
-extern crate npy_derive;
+// make sure to add `features = ["derive"]` in Cargo.toml!
 extern crate npy;
 
 use std::io::Read;
 use npy::NpyData;
 
-#[derive(Serializable, Debug)]
+#[derive(npy::Serializable, Debug)]
 struct Array {
     a: i32,
     b: f32,
@@ -114,7 +127,8 @@ fn main() {
     }
 }
 ```
-
+"##)]
+/*!
 The output is:
 
 ```text
@@ -123,6 +137,10 @@ Array { a: 2, b: 3.1, c: 5 }
 ```
 
 */
+
+// Reexport the macros.
+#[cfg(feature = "derive")] extern crate npy_derive;
+#[cfg(feature = "derive")] pub use npy_derive::*;
 
 extern crate byteorder;
 #[macro_use]
