@@ -39,6 +39,19 @@ macro_rules! gen_benches {
         }
 
         #[bench]
+        fn read_to_vec(b: &mut Bencher) {
+            // FIXME: Write to a Cursor<Vec<u8>> once #16 is merged
+            let path = concat!("benches/bench_", stringify!($T), ".npy");
+
+            npy::to_file(path, (0usize..NITER).map($new)).unwrap();
+            let bytes = std::fs::read(path).unwrap();
+
+            b.iter(|| {
+                bb(npy::NpyData::<$T>::from_bytes(&bytes).unwrap().to_vec())
+            });
+        }
+
+        #[bench]
         fn write(b: &mut Bencher) {
             b.iter(|| {
                 bb(test_data())
