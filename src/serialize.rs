@@ -120,6 +120,13 @@ enum ErrorKind {
         dtype: String,
         rust_type: &'static str,
     },
+    ExpectedArray {
+        got: &'static str, // "a scalar", "a record"
+    },
+    WrongArrayLen {
+        expected: u64,
+        actual: u64,
+    },
     ExpectedRecord {
         type_str: TypeStr,
     },
@@ -189,6 +196,12 @@ impl fmt::Display for DTypeError {
             },
             ErrorKind::ExpectedRecord { type_str } => {
                 write!(f, "expected a record type; got a scalar type '{}'", type_str)
+            },
+            ErrorKind::ExpectedArray { got } => {
+                write!(f, "rust array types require an array dtype (got {})", got)
+            },
+            ErrorKind::WrongArrayLen { actual, expected } => {
+                write!(f, "wrong array size (expected {}, got {})", expected, actual)
             },
             ErrorKind::WrongFields { actual, expected } => {
                 write!(f, "field names do not match (expected {:?}, got {:?})", expected, actual)
@@ -636,10 +649,130 @@ impl_auto_serialize!{[T: ?Sized] std::rc::Rc<T> as T where T: AutoSerialize}
 impl_auto_serialize!{[T: ?Sized] std::sync::Arc<T> as T where T: AutoSerialize}
 impl_auto_serialize!{[T: ?Sized] std::borrow::Cow<'_, T> as T where T: AutoSerialize + std::borrow::ToOwned}
 
+impl DType {
+    /// Expect an array dtype, get the length of the array and the inner dtype.
+    fn array_inner_dtype(&self, expected_len: u64) -> Result<Self, DTypeError> {
+        match *self {
+            DType::Record { .. } => Err(DTypeError(ErrorKind::ExpectedArray { got: "a record" })),
+            DType::Plain { ref ty, ref shape } => {
+                let ty = ty.clone();
+                let mut shape = shape.to_vec();
+
+                let len = match shape.is_empty() {
+                    true => return Err(DTypeError(ErrorKind::ExpectedArray { got: "a scalar" })),
+                    false => shape.remove(0),
+                };
+
+                if len != expected_len {
+                    return Err(DTypeError(ErrorKind::WrongArrayLen {
+                        actual: len,
+                        expected: expected_len,
+                    }));
+                }
+
+                Ok(DType::Plain { ty, shape })
+            },
+        }
+    }
+}
+
+macro_rules! gen_array_serializable {
+    ($([$n:tt in mod $mod_name:ident])+) => { $(
+        mod $mod_name {
+            use super::*;
+
+            pub struct ArrayReader<I>{ inner: I }
+            pub struct ArrayWriter<I>{ inner: I }
+
+            impl<I: TypeRead> TypeRead for ArrayReader<I>
+            where I::Value: Copy + Default,
+            {
+                type Value = [I::Value; $n];
+
+                #[inline]
+                fn read_one<'a>(&self, bytes: &'a [u8]) -> (Self::Value, &'a [u8]) {
+                    let mut value = [I::Value::default(); $n];
+
+                    let mut remainder = bytes;
+                    for place in &mut value {
+                        let (item, new_remainder) = self.inner.read_one(remainder);
+                        *place = item;
+                        remainder = new_remainder;
+                    }
+
+                    (value, remainder)
+                }
+            }
+
+            impl<I: TypeWrite> TypeWrite for ArrayWriter<I>
+            where I::Value: Sized,
+            {
+                type Value = [I::Value; $n];
+
+                #[inline]
+                fn write_one<W: io::Write>(&self, mut writer: W, value: &Self::Value) -> io::Result<()>
+                where Self: Sized,
+                {
+                    for item in value {
+                        self.inner.write_one(&mut writer, item)?;
+                    }
+                    Ok(())
+                }
+            }
+
+            impl<T: AutoSerialize + Default + Copy> AutoSerialize for [T; $n] {
+                #[inline]
+                fn default_dtype() -> DType {
+                    use DType::*;
+
+                    match T::default_dtype() {
+                        Plain { ty, mut shape } => DType::Plain {
+                            ty,
+                            shape: { shape.insert(0, $n); shape },
+                        },
+                        Record(_) => unimplemented!("arrays of nested records")
+                    }
+                }
+            }
+
+            impl<T: Deserialize + Default + Copy> Deserialize for [T; $n] {
+                type Reader = ArrayReader<<T as Deserialize>::Reader>;
+
+                #[inline]
+                fn reader(dtype: &DType) -> Result<Self::Reader, DTypeError> {
+                    let inner_dtype = dtype.array_inner_dtype($n)?;
+                    let inner = <T>::reader(&inner_dtype)?;
+                    Ok(ArrayReader { inner })
+                }
+            }
+
+            impl<T: Serialize> Serialize for [T; $n] {
+                type Writer = ArrayWriter<<T as Serialize>::Writer>;
+
+                #[inline]
+                fn writer(dtype: &DType) -> Result<Self::Writer, DTypeError> {
+                    let inner = <T>::writer(&dtype.array_inner_dtype($n)?)?;
+                    Ok(ArrayWriter { inner })
+                }
+            }
+        }
+    )+ }
+}
+
+gen_array_serializable!{
+    /*  no size 0  */ [ 1 in mod  arr1] [ 2 in mod  arr2] [ 3 in mod  arr3]
+    [ 4 in mod  arr4] [ 5 in mod  arr5] [ 6 in mod  arr6] [ 7 in mod  arr7]
+    [ 8 in mod  arr8] [ 9 in mod  arr9] [10 in mod arr10] [11 in mod arr11]
+    [12 in mod arr12] [13 in mod arr13] [14 in mod arr14] [15 in mod arr15]
+    [16 in mod arr16]
+}
+
 #[cfg(test)]
 #[deny(unused)]
 mod tests {
     use super::*;
+
+    // NOTE: Tests for arrays are in tests/serialize_array.rs because they require derives
 
     fn reader_output<T: Deserialize>(dtype: &DType, bytes: &[u8]) -> T {
         T::reader(dtype).unwrap_or_else(|e| panic!("{}", e)).read_one(bytes).0

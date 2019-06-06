@@ -74,8 +74,9 @@ impl DType {
         }
     }
 
-    #[cfg(test)]
-    pub(crate) fn parse(source: &str) -> Result<Self> {
+    // not part of stable API, but needed by the serialize_array test
+    #[doc(hidden)]
+    pub fn parse(source: &str) -> Result<Self> {
         let descr = match parser::item(source.as_bytes()) {
             IResult::Done(_, header) => {
                 Ok(header)
