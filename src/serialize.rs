@@ -4,6 +4,7 @@ use byteorder::{ByteOrder, NativeEndian, WriteBytesExt};
 use self::{TypeKind::*};
 use std::io;
 use std::fmt;
+use std::convert::TryFrom;
 
 /// Trait that permits reading a type from an `.npy` file.
 ///
@@ -108,6 +109,7 @@ enum ErrorKind {
         rust_type: &'static str,
         verb: &'static str,
     },
+    UsizeOverflow(u64),
 }
 
 impl std::error::Error for DTypeError {}
@@ -128,6 +130,10 @@ impl DTypeError {
         let dtype = dtype.descr();
         DTypeError(ErrorKind::ExpectedScalar { dtype, rust_type })
     }
+
+    fn bad_usize(x: u64) -> Self {
+        DTypeError(ErrorKind::UsizeOverflow(x))
+    }
 }
 
 impl fmt::Display for DTypeError {
@@ -142,8 +148,15 @@ impl fmt::Display for DTypeError {
             ErrorKind::BadScalar { type_str, rust_type, verb } => {
                 write!(f, "cannot {} type {} with type-string '{}'", verb, rust_type, type_str)
             },
+            ErrorKind::UsizeOverflow(value) => {
+                write!(f, "cannot cast {} as usize", value)
+            },
         }
     }
+}
+
+fn invalid_data<T>(message: &str) -> io::Result<T> {
+    Err(io::Error::new(io::ErrorKind::InvalidData, message.to_string()))
 }
 
 // Takes info about each data size, from largest to smallest.
@@ -388,7 +401,171 @@ impl_float_serializable! {
     [ 4 f32 read_f32 write_f32 ]
 }
 
+pub struct BytesReader {
+    size: usize,
+    is_byte_str: bool,
+}
+
+impl TypeRead for BytesReader {
+    type Value = Vec<u8>;
+
+    fn read_one<'a>(&self, bytes: &'a [u8]) -> (Vec<u8>, &'a [u8]) {
+        let mut vec = vec![];
+
+        let (src, remainder) = bytes.split_at(self.size);
+        vec.resize(self.size, 0);
+        vec.copy_from_slice(src);
+
+        // truncate trailing zeros for type 'S'
+        if self.is_byte_str {
+            let end = vec.iter().rposition(|x| x != &0).map_or(0, |ind| ind + 1);
+            vec.truncate(end);
+        }
+
+        (vec, remainder)
+    }
+}
+
+impl Deserialize for Vec<u8> {
+    type Reader = BytesReader;
+
+    fn reader(type_str: &DType) -> Result<Self::Reader, DTypeError> {
+        let type_str = type_str.as_scalar().ok_or_else(|| DTypeError::expected_scalar(type_str, "Vec<u8>"))?;
+        let size = match usize::try_from(type_str.size) {
+            Ok(size) => size,
+            Err(_) => return Err(DTypeError::bad_usize(type_str.size)),
+        };
+
+        let is_byte_str = match *type_str {
+            TypeStr { type_kind: ByteStr, .. } => true,
+            TypeStr { type_kind: RawData, .. } => false,
+            _ => return Err(DTypeError::bad_scalar("read", type_str, "Vec<u8>")),
+        };
+        Ok(BytesReader { size, is_byte_str })
+    }
+}
+
+pub struct BytesWriter {
+    type_str: TypeStr,
+    size: usize,
+    is_byte_str: bool,
+}
+
+impl TypeWrite for BytesWriter {
+    type Value = [u8];
+
+    fn write_one<W: io::Write>(&self, mut w: W, bytes: &[u8]) -> io::Result<()> {
+        use std::cmp::Ordering;
+
+        match (bytes.len().cmp(&self.size), self.is_byte_str) {
+            (Ordering::Greater, _) |
+            (Ordering::Less, false) => return invalid_data(
+                &format!("bad item length {} for type-string '{}'", bytes.len(), self.type_str),
+            ),
+            _ => {},
+        }
+
+        w.write_all(bytes)?;
+        if self.is_byte_str {
+            w.write_all(&vec![0; self.size - bytes.len()])?;
+        }
+        Ok(())
+    }
+}
+
+impl Serialize for [u8] {
+    type Writer = BytesWriter;
+
+    fn writer(dtype: &DType) -> Result<Self::Writer, DTypeError> {
+        let type_str = dtype.as_scalar().ok_or_else(|| DTypeError::expected_scalar(dtype, "[u8]"))?;
+
+        let size = match usize::try_from(type_str.size) {
+            Ok(size) => size,
+            Err(_) => return Err(DTypeError::bad_usize(type_str.size)),
+        };
+
+        let type_str = type_str.clone();
+        let is_byte_str = match type_str {
+            TypeStr { type_kind: ByteStr, .. } => true,
+            TypeStr { type_kind: RawData, .. } => false,
+            _ => return Err(DTypeError::bad_scalar("read", &type_str, "[u8]")),
+        };
+        Ok(BytesWriter { type_str, size, is_byte_str })
+    }
+}
+
+#[macro_use]
+mod helper {
+    use super::*;
+    use std::ops::Deref;
+
+    pub struct TypeWriteViaDeref<T>
+    where
+        T: Deref,
+        <T as Deref>::Target: Serialize,
+    {
+        pub(crate) inner: <<T as Deref>::Target as Serialize>::Writer,
+    }
+
+    impl<T, U: ?Sized> TypeWrite for TypeWriteViaDeref<T>
+    where
+        T: Deref<Target=U>,
+        U: Serialize,
+    {
+        type Value = T;
+
+        #[inline(always)]
+        fn write_one<W: io::Write>(&self, writer: W, value: &T) -> io::Result<()> {
+            self.inner.write_one(writer, value)
+        }
+    }
+
+    macro_rules! impl_serialize_by_deref {
+        ([$($generics:tt)*] $T:ty => $Target:ty $(where $($bounds:tt)+)*) => {
+            impl<$($generics)*> Serialize for $T
+            $(where $($bounds)+)*
+            {
+                type Writer = helper::TypeWriteViaDeref<$T>;
+
+                #[inline(always)]
+                fn writer(dtype: &DType) -> Result<Self::Writer, DTypeError> {
+                    Ok(helper::TypeWriteViaDeref { inner: <$Target>::writer(dtype)? })
+                }
+            }
+        };
+    }
+
+    macro_rules! impl_auto_serialize {
+        ([$($generics:tt)*] $T:ty as $Delegate:ty $(where $($bounds:tt)+)*) => {
+            impl<$($generics)*> AutoSerialize for $T
+            $(where $($bounds)+)*
+            {
+                #[inline(always)]
+                fn default_dtype() -> DType {
+                    <$Delegate>::default_dtype()
+                }
+            }
+        };
+    }
+}
+
+impl_serialize_by_deref!{[] Vec<u8> => [u8]}
+
+impl_serialize_by_deref!{['a, T: ?Sized] &'a T => T where T: Serialize}
+impl_serialize_by_deref!{['a, T: ?Sized] &'a mut T => T where T: Serialize}
+impl_serialize_by_deref!{[T: ?Sized] Box<T> => T where T: Serialize}
+impl_serialize_by_deref!{[T: ?Sized] std::rc::Rc<T> => T where T: Serialize}
+impl_serialize_by_deref!{[T: ?Sized] std::sync::Arc<T> => T where T: Serialize}
+impl_serialize_by_deref!{['a, T: ?Sized] std::borrow::Cow<'a, T> => T where T: Serialize + std::borrow::ToOwned}
+impl_auto_serialize!{[T: ?Sized] &T as T where T: AutoSerialize}
+impl_auto_serialize!{[T: ?Sized] &mut T as T where T: AutoSerialize}
+impl_auto_serialize!{[T: ?Sized] Box<T> as T where T: AutoSerialize}
+impl_auto_serialize!{[T: ?Sized] std::rc::Rc<T> as T where T: AutoSerialize}
+impl_auto_serialize!{[T: ?Sized] std::sync::Arc<T> as T where T: AutoSerialize}
+impl_auto_serialize!{[T: ?Sized] std::borrow::Cow<'_, T> as T where T: AutoSerialize + std::borrow::ToOwned}
+
 #[cfg(test)]
+#[deny(unused)]
 mod tests {
     use super::*;
 
@@ -512,6 +689,67 @@ mod tests {
     }
 
     #[test]
+    fn bytes_any_endianness() {
+        for ty in vec!["'<S3'", "'>S3'", "'|S3'"] {
+            let ty = DType::parse(ty).unwrap();
+            assert_eq!(writer_output(&ty, &[1, 3, 5][..]), vec![1, 3, 5]);
+            assert_eq!(reader_output::<Vec<u8>>(&ty, &[1, 3, 5][..]), vec![1, 3, 5]);
+        }
+    }
+
+    #[test]
+    fn bytes_size_zero() {
+        let ts = DType::parse("'|S0'").unwrap();
+        assert_eq!(reader_output::<Vec<u8>>(&ts, &[]), vec![]);
+        assert_eq!(writer_output(&ts, &[][..]), vec![]);
+
+        let ts = DType::parse("'|V0'").unwrap();
+        assert_eq!(reader_output::<Vec<u8>>(&ts, &[]), vec![]);
+        assert_eq!(writer_output::<[u8]>(&ts, &[]), vec![]);
+    }
+
+    #[test]
+    fn wrong_size_bytes() {
+        let s_3 = DType::parse("'|S3'").unwrap();
+        let v_3 = DType::parse("'|V3'").unwrap();
+
+        assert_eq!(writer_output(&s_3, &[1, 3, 5][..]), vec![1, 3, 5]);
+        assert_eq!(writer_output(&v_3, &[1, 3, 5][..]), vec![1, 3, 5]);
+
+        assert_eq!(writer_output(&s_3, &[1][..]), vec![1, 0, 0]);
+        writer_expect_write_err(&v_3, &[1][..]);
+
+        assert_eq!(writer_output(&s_3, &[][..]), vec![0, 0, 0]);
+        writer_expect_write_err(&v_3, &[][..]);
+
+        writer_expect_write_err(&s_3, &[1, 3, 5, 7][..]);
+        writer_expect_write_err(&v_3, &[1, 3, 5, 7][..]);
+    }
+
+    #[test]
+    fn read_bytes_with_trailing_zeros() {
+        let ts = DType::parse("'|S2'").unwrap();
+        assert_eq!(reader_output::<Vec<u8>>(&ts, &[1, 3]), vec![1, 3]);
+        assert_eq!(reader_output::<Vec<u8>>(&ts, &[1, 0]), vec![1]);
+        assert_eq!(reader_output::<Vec<u8>>(&ts, &[0, 0]), vec![]);
+
+        let ts = DType::parse("'|V2'").unwrap();
+        assert_eq!(reader_output::<Vec<u8>>(&ts, &[1, 3]), vec![1, 3]);
+        assert_eq!(reader_output::<Vec<u8>>(&ts, &[1, 0]), vec![1, 0]);
+        assert_eq!(reader_output::<Vec<u8>>(&ts, &[0, 0]), vec![0, 0]);
+    }
+
+    #[test]
+    fn bytestr_preserves_interior_zeros() {
+        const DATA: &[u8] = &[0, 1, 0, 0, 3, 5];
+
+        let ts = DType::parse("'|S6'").unwrap();
+
+        assert_eq!(reader_output::<Vec<u8>>(&ts, DATA), DATA.to_vec());
+        assert_eq!(writer_output(&ts, DATA), DATA.to_vec());
+    }
+
+    #[test]
     fn default_simple_type_strs() {
         assert_eq!(i8::default_dtype().descr(), "'|i1'");
         assert_eq!(u8::default_dtype().descr(), "'|u1'");
@@ -527,5 +765,13 @@ mod tests {
             assert_eq!(i64::default_dtype().descr(), "'<i8'");
             assert_eq!(u32::default_dtype().descr(), "'<u4'");
         }
+    }
+
+    #[test]
+    fn serialize_types_that_deref_to_bytes() {
+        let ts = DType::parse("'|S3'").unwrap();
+
+        assert_eq!(writer_output::<Vec<u8>>(&ts, &vec![1, 3, 5]), vec![1, 3, 5]);
+        assert_eq!(writer_output::<&[u8]>(&ts, &&[1, 3, 5][..]), vec![1, 3, 5]);
     }
 }
