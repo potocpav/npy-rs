@@ -301,6 +301,93 @@ impl_integer_serializable! {
     ]
 }
 
+// Takes info about each data size, from largest to smallest.
+macro_rules! impl_float_serializable {
+    ( $( [ $size:literal $float:ident $read_float:ident $write_float:ident ] )+ ) => { $(
+        mod $float {
+            use super::*;
+
+            pub struct AnyEndianReader { pub(super) swap_byteorder: bool }
+            pub struct AnyEndianWriter { pub(super) swap_byteorder: bool }
+
+            #[inline]
+            fn maybe_swap(swap: bool, x: $float) -> $float {
+                match swap {
+                    true => $float::from_bits(x.to_bits().to_be().to_le()),
+                    false => x,
+                }
+            }
+
+            pub(super) fn expect_scalar_dtype(dtype: &DType) -> Result<&TypeStr, DTypeError> {
+                dtype.as_scalar().ok_or_else(|| {
+                    DTypeError::expected_scalar(dtype, stringify!($float))
+                })
+            }
+
+            impl TypeRead for AnyEndianReader {
+                type Value = $float;
+
+                #[inline(always)]
+                fn read_one<'a>(&self, bytes: &'a [u8]) -> ($float, &'a [u8]) {
+                    let value = maybe_swap(self.swap_byteorder, NativeEndian::$read_float(bytes));
+                    (value, &bytes[$size..])
+                }
+            }
+
+            impl TypeWrite for AnyEndianWriter {
+                type Value = $float;
+
+                #[inline(always)]
+                fn write_one<W: io::Write>(&self, mut writer: W, &value: &$float) -> io::Result<()> {
+                    writer.$write_float::<NativeEndian>(maybe_swap(self.swap_byteorder, value))
+                }
+            }
+        }
+
+        impl Deserialize for $float {
+            type Reader = $float::AnyEndianReader;
+
+            fn reader(dtype: &DType) -> Result<Self::Reader, DTypeError> {
+                match $float::expect_scalar_dtype(dtype)? {
+                    // Read a float of the correct size
+                    TypeStr { size: $size, endianness, type_kind: Float, .. } => {
+                        let swap_byteorder = endianness.requires_swap(Endianness::of_machine());
+                        Ok($float::AnyEndianReader { swap_byteorder })
+                    },
+                    type_str => Err(DTypeError::bad_scalar("read", type_str, stringify!($float))),
+                }
+            }
+        }
+
+        impl Serialize for $float {
+            type Writer = $float::AnyEndianWriter;
+
+            fn writer(dtype: &DType) -> Result<Self::Writer, DTypeError> {
+                match $float::expect_scalar_dtype(dtype)? {
+                    // Write a float of the correct size
+                    TypeStr { size: $size, endianness, type_kind: Float, .. } => {
+                        let swap_byteorder = endianness.requires_swap(Endianness::of_machine());
+                        Ok($float::AnyEndianWriter { swap_byteorder })
+                    },
+                    type_str => Err(DTypeError::bad_scalar("write", type_str, stringify!($float))),
+                }
+            }
+        }
+
+        impl AutoSerialize for $float {
+            fn default_dtype() -> DType {
+                DType::new_scalar(TypeStr::with_auto_endianness(Float, $size, None))
+            }
+        }
+    )+};
+}
+
+impl_float_serializable! {
+    // TODO: numpy supports f16, f128
+    [ 8 f64 read_f64 write_f64 ]
+    [ 4 f32 read_f32 write_f32 ]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -365,6 +452,29 @@ mod tests {
             assert_eq!(reader_output::<u8>(&dtype, &[1]), 1);
             assert_eq!(writer_output::<u8>(&dtype, &1), &[1][..]);
         }
+    }
+
+    #[test]
+    fn native_float_types() {
+        let be_bytes = 42.0_f64.to_bits().to_be_bytes();
+        let le_bytes = 42.0_f64.to_bits().to_le_bytes();
+        let be = DType::parse("'>f8'").unwrap();
+        let le = DType::parse("'<f8'").unwrap();
+
+        assert_eq!(reader_output::<f64>(&be, &be_bytes), 42.0);
+        assert_eq!(reader_output::<f64>(&le, &le_bytes), 42.0);
+        assert_eq!(writer_output::<f64>(&be, &42.0), &be_bytes);
+        assert_eq!(writer_output::<f64>(&le, &42.0), &le_bytes);
+
+        let be_bytes = 42.0_f32.to_bits().to_be_bytes();
+        let le_bytes = 42.0_f32.to_bits().to_le_bytes();
+        let be = DType::parse("'>f4'").unwrap();
+        let le = DType::parse("'<f4'").unwrap();
+
+        assert_eq!(reader_output::<f32>(&be, &be_bytes), 42.0);
+        assert_eq!(reader_output::<f32>(&le, &le_bytes), 42.0);
+        assert_eq!(writer_output::<f32>(&be, &42.0), &be_bytes);
+        assert_eq!(writer_output::<f32>(&le, &42.0), &le_bytes);
     }
 
     #[test]
