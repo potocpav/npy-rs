@@ -120,6 +120,13 @@ enum ErrorKind {
         dtype: String,
         rust_type: &'static str,
     },
+    ExpectedRecord {
+        type_str: TypeStr,
+    },
+    WrongFields {
+        expected: Vec<String>,
+        actual: Vec<String>,
+    },
     BadScalar {
         type_str: TypeStr,
         rust_type: &'static str,
@@ -150,6 +157,25 @@ impl DTypeError {
     fn bad_usize(x: u64) -> Self {
         DTypeError(ErrorKind::UsizeOverflow(x))
     }
+
+    // used by derives
+    #[doc(hidden)]
+    pub fn expected_record(type_str: &TypeStr) -> Self {
+        let type_str = type_str.clone();
+        DTypeError(ErrorKind::ExpectedRecord { type_str })
+    }
+
+    // used by derives
+    #[doc(hidden)]
+    pub fn wrong_fields<S1: AsRef<str>, S2: AsRef<str>>(
+        expected: impl IntoIterator<Item=S1>,
+        actual: impl IntoIterator<Item=S2>,
+    ) -> Self {
+        DTypeError(ErrorKind::WrongFields {
+            expected: expected.into_iter().map(|s| s.as_ref().to_string()).collect(),
+            actual: actual.into_iter().map(|s| s.as_ref().to_string()).collect(),
+        })
+    }
 }
 
 impl fmt::Display for DTypeError {
@@ -160,6 +186,12 @@ impl fmt::Display for DTypeError {
             },
             ErrorKind::ExpectedScalar { dtype, rust_type } => {
                 write!(f, "type {} requires a scalar (string) dtype, not {}", rust_type, dtype)
+            },
+            ErrorKind::ExpectedRecord { type_str } => {
+                write!(f, "expected a record type; got a scalar type '{}'", type_str)
+            },
+            ErrorKind::WrongFields { actual, expected } => {
+                write!(f, "field names do not match (expected {:?}, got {:?})", expected, actual)
             },
             ErrorKind::BadScalar { type_str, rust_type, verb } => {
                 write!(f, "cannot {} type {} with type-string '{}'", verb, rust_type, type_str)

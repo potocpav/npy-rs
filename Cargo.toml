@@ -56,5 +56,9 @@ name = "roundtrip"
 required-features = ["derive"]
 
 [[test]]
+name = "derive_hygiene"
+required-features = ["derive"]
+
+[[test]]
 name = "roundtrip"
 required-features = ["derive"]
