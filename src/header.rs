@@ -9,9 +9,11 @@ use type_str::TypeStr;
 pub enum DType {
     /// A simple array with only a single field
     Plain {
-        /// Numpy type string. First character is `'>'` for big endian, `'<'` for little endian.
+        /// Numpy type string. First character is `'>'` for big endian, `'<'` for little endian,
+        /// or can be `'|'` if it doesn't matter.
         ///
-        /// Examples: `>i4`, `<u8`, `>f8`. The number corresponds to the number of bytes.
+        /// Examples: `>i4`, `<u8`, `>f8`, `|S7`. The number usually corresponds to the number of
+        /// bytes (with the single exception of unicode strings `|U3`).
         ty: TypeStr,
 
         /// Shape of a type.
@@ -65,10 +67,7 @@ impl DType {
     pub fn from_descr(descr: Value) -> Result<Self> {
         use DType::*;
         match descr {
-            Value::String(string) => {
-                    let ty = convert_string_to_type_str(&string)?;
-                    Ok(Plain { ty, shape: vec![] })
-                },
+            Value::String(ref string) => Ok(Self::new_scalar(convert_string_to_type_str(string)?)),
             Value::List(ref list) => Ok(Record(convert_list_to_record_fields(list)?)),
             _ => invalid_data("must be string or list")
         }

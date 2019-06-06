@@ -25,13 +25,6 @@ fn writer_expect_err<T: Serialize + ?Sized>(dtype: &DType) {
     T::writer(dtype).err().expect("writer_expect_err failed!");
 }
 
-fn writer_expect_write_err<T: Serialize + ?Sized>(dtype: &DType, value: &T) {
-    let mut vec = vec![];
-    T::writer(dtype).unwrap_or_else(|e| panic!("{}", e))
-        .write_one(&mut vec, value)
-        .err().expect("writer_expect_write_err failed!");
-}
-
 #[derive(npy::Serialize, npy::Deserialize, npy::AutoSerialize)]
 #[derive(Debug, PartialEq)]
 struct Array3 {
