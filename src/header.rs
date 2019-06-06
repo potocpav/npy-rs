@@ -5,7 +5,7 @@ use std::io::Result;
 use type_str::TypeStr;
 
 /// Representation of a Numpy type
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub enum DType {
     /// A simple array with only a single field
     Plain {
@@ -25,7 +25,7 @@ pub enum DType {
     Record(Vec<Field>)
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 /// A field of a record dtype
 pub struct Field {
     /// The name of the field
