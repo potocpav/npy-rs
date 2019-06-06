@@ -11,12 +11,12 @@ It stores the type, shape and endianness information in a header,
 which is followed by a flat binary data field. This crate offers a simple, mostly type-safe way to
 read and write *.npy files. Files are handled using iterators, so they don't need to fit in memory.
 
-One-dimensional arrays of types that implement the [`Serializable`](trait.Serializable.html) trait
-are supported. These are:
+One-dimensional arrays of types that implement the [`Serialize`], [`Deserialize`],
+and/or [`AutoSerialize`] traits are supported. These are:
 
  * primitive types: `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `f32`, `f64`. These map to the `numpy`
    types of `int8`, `uint8`, `int16`, etc.
- * `struct`s annotated as `#[derive(Serializable)]`. These map to `numpy`'s
+ * `struct`s annotated as e.g. `#[derive(npy::Serialize)]`. These map to `numpy`'s
      [Structured arrays](https://docs.scipy.org/doc/numpy/user/basics.rec.html). They can contain the
      following field types:
    * primitive types,
@@ -25,13 +25,12 @@ are supported. These are:
  * `struct`s with manual trait implementations. An example of this can be found in the
    [roundtrip test](https://github.com/potocpav/npy-rs/tree/master/tests/roundtrip.rs).
 
-To successfully import an array from NPY using the `#[derive(Serializable)]` mechanism, the target
-struct must contain:
+To successfully import an array from NPY using the `#[derive(npy::Serialize)]` mechanism,
+you must enable the `"derive"` feature, and the target struct must contain:
 
 * corresponding number of fields in the same order,
 * corresponding names of fields,
 * compatible field types.
-* only little endian fields
 
 # Examples
 
@@ -109,7 +108,7 @@ extern crate npy;
 use std::io::Read;
 use npy::NpyData;
 
-#[derive(npy::Serializable, Debug)]
+#[derive(npy::Deserialize, Debug)]
 struct Array {
     a: i32,
     b: f32,
