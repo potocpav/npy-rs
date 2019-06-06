@@ -92,6 +92,22 @@ pub trait TypeWrite {
     where Self: Sized;
 }
 
+/// The proper trait to use for trait objects of [`TypeWrite`].
+///
+/// `Box<dyn TypeWrite>` is useless because `dyn TypeWrite` has no object-safe methods.
+/// The workaround is to use `Box<dyn TypeWriteDyn>` instead, which itself implements `TypeWrite`.
+pub trait TypeWriteDyn: TypeWrite {
+    #[doc(hidden)]
+    fn write_one_dyn(&self, writer: &mut dyn io::Write, value: &Self::Value) -> io::Result<()>;
+}
+
+impl<T: TypeWrite> TypeWriteDyn for T {
+    #[inline(always)]
+    fn write_one_dyn(&self, writer: &mut dyn io::Write, value: &Self::Value) -> io::Result<()> {
+        self.write_one(writer, value)
+    }
+}
+
 /// Indicates that a particular rust type does not support serialization or deserialization
 /// as a given [`DType`].
 #[derive(Debug, Clone)]
@@ -152,6 +168,30 @@ impl fmt::Display for DTypeError {
                 write!(f, "cannot cast {} as usize", value)
             },
         }
+    }
+}
+
+impl<T> TypeRead for Box<dyn TypeRead<Value=T>> {
+    type Value = T;
+
+    #[inline(always)]
+    fn read_one<'a>(&self, bytes: &'a [u8]) -> (T, &'a [u8]) {
+        (**self).read_one(bytes)
+    }
+}
+
+impl<T: ?Sized> TypeWrite for Box<dyn TypeWriteDyn<Value=T>> {
+    type Value = T;
+
+    #[inline(always)]
+    fn write_one<W: io::Write>(&self, mut writer: W, value: &T) -> io::Result<()>
+    where Self: Sized,
+    {
+        // Boxes must always go through two virtual dispatches.
+        //
+        // (one on the TypeWrite trait object, and one on the Writer which must be
+        //  cast to the monomorphic type `&mut dyn io::write`)
+        (**self).write_one_dyn(&mut writer, value)
     }
 }
 
@@ -773,5 +813,15 @@ mod tests {
 
         assert_eq!(writer_output::<Vec<u8>>(&ts, &vec![1, 3, 5]), vec![1, 3, 5]);
         assert_eq!(writer_output::<&[u8]>(&ts, &&[1, 3, 5][..]), vec![1, 3, 5]);
+    }
+
+    #[test]
+    fn dynamic_readers_and_writers() {
+        let writer: Box<dyn TypeWriteDyn<Value=i32>> = Box::new(i32::writer(&i32::default_dtype()).unwrap());
+        let reader: Box<dyn TypeRead<Value=i32>> = Box::new(i32::reader(&i32::default_dtype()).unwrap());
+
+        let mut buf = vec![];
+        writer.write_one(&mut buf, &4000).unwrap();
+        assert_eq!(reader.read_one(&buf).0, 4000);
     }
 }

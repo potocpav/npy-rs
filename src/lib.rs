@@ -140,5 +140,5 @@ pub use header::{DType, Field};
 pub use npy_data::NpyData;
 pub use out_file::{to_file, OutFile};
 pub use serialize::{Serialize, Deserialize, AutoSerialize};
-pub use serialize::{TypeRead, TypeWrite, DTypeError};
+pub use serialize::{TypeRead, TypeWrite, TypeWriteDyn, DTypeError};
 pub use type_str::{TypeStr, ParseTypeStrError};
