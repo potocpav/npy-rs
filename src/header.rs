@@ -103,6 +103,18 @@ impl DType {
             _ => None,
         }
     }
+
+    /// Get the number of bytes that each item of this type occupies.
+    pub fn num_bytes(&self) -> usize {
+        match self {
+            DType::Plain { ty, shape } => {
+                ty.num_bytes() * shape.iter().product::<u64>() as usize
+            },
+            DType::Record(fields) => {
+                fields.iter().map(|field| field.dtype.num_bytes()).sum()
+            },
+        }
+    }
 }
 
 fn convert_list_to_record_fields(values: &[Value]) -> Result<Vec<Field>> {
