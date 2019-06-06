@@ -73,6 +73,35 @@ impl DType {
             _ => invalid_data("must be string or list")
         }
     }
+
+    #[cfg(test)]
+    pub(crate) fn parse(source: &str) -> Result<Self> {
+        let descr = match parser::item(source.as_bytes()) {
+            IResult::Done(_, header) => {
+                Ok(header)
+            },
+            IResult::Incomplete(needed) => {
+                invalid_data(&format!("could not parse Python expression: {:?}", needed))
+            },
+            IResult::Error(err) => {
+                invalid_data(&format!("could not parse Python expression: {:?}", err))
+            },
+        }?;
+        Self::from_descr(descr)
+    }
+
+    /// Construct a scalar `DType`. (one which is not a nested array or record type)
+    pub fn new_scalar(ty: TypeStr) -> Self {
+        DType::Plain { ty, shape: vec![] }
+    }
+
+    /// Return a `TypeStr` only if the `DType` is a primitive scalar. (no arrays or record types)
+    pub(crate) fn as_scalar(&self) -> Option<&TypeStr> {
+        match self {
+            DType::Plain { ty, shape } if shape.is_empty() => Some(ty),
+            _ => None,
+        }
+    }
 }
 
 fn convert_list_to_record_fields(values: &[Value]) -> Result<Vec<Field>> {
