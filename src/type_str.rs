@@ -214,7 +214,7 @@ impl TypeKind {
         }
     }
 
-    /// Returns `true` if `|` endianness is illegal.
+    /// Returns `true` if unit specification is required.
     fn has_units(self) -> bool {
         match self {
             TypeKind::TimeDelta |

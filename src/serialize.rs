@@ -290,7 +290,7 @@ macro_rules! impl_integer_serializable {
             #[inline]
             fn maybe_swap(swap: bool, x: $int) -> $int {
                 match swap {
-                    true => x.to_be().to_le(),
+                    true => x.swap_bytes(),
                     false => x,
                 }
             }
@@ -411,7 +411,7 @@ macro_rules! impl_float_serializable {
             #[inline]
             fn maybe_swap(swap: bool, x: $float) -> $float {
                 match swap {
-                    true => $float::from_bits(x.to_bits().to_be().to_le()),
+                    true => $float::from_bits(x.to_bits().swap_bytes()),
                     false => x,
                 }
             }
