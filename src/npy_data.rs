@@ -31,8 +31,8 @@ impl<'a, T: Deserialize> NpyData<'a, T> {
     }
 
     /// Get the dtype as written in the file.
-    pub fn dtype(&self) -> DType {
-        self.dtype.clone()
+    pub fn dtype(&self) -> &DType {
+        &self.dtype
     }
 
     /// Gets a single data-record with the specified index. Returns None, if the index is

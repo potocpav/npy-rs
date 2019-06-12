@@ -208,7 +208,7 @@ fn roundtrip_byteorder() {
 
     let data = npy::NpyData::<Row>::from_bytes(&buffer).unwrap();
     assert_eq!(data.to_vec(), vec![row]);
-    assert_eq!(data.dtype(), dtype);
+    assert_eq!(data.dtype(), &dtype);
 }
 
 #[test]
@@ -268,7 +268,7 @@ fn roundtrip_datetime() {
 
     let data = npy::NpyData::<Row>::from_bytes(&buffer).unwrap();
     assert_eq!(data.to_vec(), vec![row]);
-    assert_eq!(data.dtype(), dtype);
+    assert_eq!(data.dtype(), &dtype);
 }
 
 #[test]
@@ -326,7 +326,7 @@ fn roundtrip_bytes() {
 
     let data = npy::NpyData::<Row>::from_bytes(&buffer).unwrap();
     assert_eq!(data.to_vec(), vec![row]);
-    assert_eq!(data.dtype(), dtype);
+    assert_eq!(data.dtype(), &dtype);
 }
 
 // check that all byte orders are identical for bytestrings
@@ -381,5 +381,5 @@ fn roundtrip_bytes_byteorder() {
 
     let data = npy::NpyData::<Row>::from_bytes(&buffer).unwrap();
     assert_eq!(data.to_vec(), vec![row]);
-    assert_eq!(data.dtype(), dtype);
+    assert_eq!(data.dtype(), &dtype);
 }
