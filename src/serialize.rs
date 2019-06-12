@@ -271,9 +271,7 @@ macro_rules! impl_integer_serializable {
     (
         @generate
         meta: [ (main_ty: $Int:ident) (date_ty: $DateTime:ident) ]
-        current: [ $size:literal $int:ident
-                   (size1: $size1_cfg:meta) $read_int:ident $write_int:ident
-                 ]
+        current: [ $size:literal $int:ident $read_int:ident $write_int:ident ]
     ) => {
         mod $int {
             use super::*;
@@ -326,6 +324,8 @@ macro_rules! impl_integer_serializable {
                     // so we support those too.
                     TypeStr { size: $size, endianness, type_kind: $Int, .. } |
                     TypeStr { size: $size, endianness, type_kind: $DateTime, .. } => {
+                        assert!($size == 1 || endianness != &Endianness::Irrelevant, "(BUG) invalid dtype constructed?");
+
                         let swap_byteorder = endianness.requires_swap(Endianness::of_machine());
                         Ok($int::AnyEndianReader { swap_byteorder })
                     },
@@ -342,6 +342,8 @@ macro_rules! impl_integer_serializable {
                     // Write a signed integer of the correct size
                     TypeStr { size: $size, endianness, type_kind: $Int, .. } |
                     TypeStr { size: $size, endianness, type_kind: $DateTime, .. } => {
+                        assert!($size == 1 || endianness != &Endianness::Irrelevant, "(BUG) invalid dtype constructed?");
+
                         let swap_byteorder = endianness.requires_swap(Endianness::of_machine());
                         Ok($int::AnyEndianWriter { swap_byteorder })
                     },
@@ -374,16 +376,15 @@ trait WriteSingleByteExt: WriteBytesExt {
 
 impl<W: WriteBytesExt + ?Sized> WriteSingleByteExt for W {}
 
-// `all()` means "true", `any()` means "false". (these get put inside `cfg`)
 impl_integer_serializable! {
     @iterate
     meta: [ (main_ty: Int) (date_ty: TimeDelta) ]
     remaining: [
         // numpy doesn't support i128
-        [ 8  i64 (size1: any()) read_i64  write_i64 ]
-        [ 4  i32 (size1: any()) read_i32  write_i32 ]
-        [ 2  i16 (size1: any()) read_i16  write_i16 ]
-        [ 1   i8 (size1: all()) read_i8_  write_i8_ ]
+        [ 8  i64 read_i64  write_i64 ]
+        [ 4  i32 read_i32  write_i32 ]
+        [ 2  i16 read_i16  write_i16 ]
+        [ 1   i8 read_i8_  write_i8_ ]
     ]
 }
 
@@ -392,10 +393,10 @@ impl_integer_serializable! {
     meta: [ (main_ty: Uint) (date_ty: DateTime) ]
     remaining: [
         // numpy doesn't support i128
-        [ 8  u64 (size1: any()) read_u64  write_u64 ]
-        [ 4  u32 (size1: any()) read_u32  write_u32 ]
-        [ 2  u16 (size1: any()) read_u16  write_u16 ]
-        [ 1   u8 (size1: all()) read_u8_  write_u8_ ]
+        [ 8  u64 read_u64  write_u64 ]
+        [ 4  u32 read_u32  write_u32 ]
+        [ 2  u16 read_u16  write_u16 ]
+        [ 1   u8 read_u8_  write_u8_ ]
     ]
 }
 
@@ -449,6 +450,8 @@ macro_rules! impl_float_serializable {
                 match $float::expect_scalar_dtype(dtype)? {
                     // Read a float of the correct size
                     TypeStr { size: $size, endianness, type_kind: Float, .. } => {
+                        assert_ne!(endianness, &Endianness::Irrelevant, "(BUG) invalid dtype constructed?");
+
                         let swap_byteorder = endianness.requires_swap(Endianness::of_machine());
                         Ok($float::AnyEndianReader { swap_byteorder })
                     },
@@ -464,6 +467,8 @@ macro_rules! impl_float_serializable {
                 match $float::expect_scalar_dtype(dtype)? {
                     // Write a float of the correct size
                     TypeStr { size: $size, endianness, type_kind: Float, .. } => {
+                        assert_ne!(endianness, &Endianness::Irrelevant, "(BUG) invalid dtype constructed?");
+
                         let swap_byteorder = endianness.requires_swap(Endianness::of_machine());
                         Ok($float::AnyEndianWriter { swap_byteorder })
                     },
@@ -806,7 +811,7 @@ mod tests {
     const LE_ONE_32: &[u8] = &[1, 0, 0, 0];
 
     #[test]
-    fn identity() {
+    fn native_int_types() {
         let be = DType::parse("'>i4'").unwrap();
         let le = DType::parse("'<i4'").unwrap();
 
@@ -876,6 +881,13 @@ mod tests {
         assert_eq!(reader_output::<u64>(&le, LE_ONE_64), 1);
         assert_eq!(writer_output::<u64>(&be, &1), BE_ONE_64);
         assert_eq!(writer_output::<u64>(&le, &1), LE_ONE_64);
+    }
+
+    #[test]
+    fn illegal_endianness() {
+        // There is currently no need to test that each type rejects '|' endianness in their
+        // (De)Serialize impls, because this is checked up-front during DType construction.
+        assert!(DType::parse("'|i4'").is_err());
     }
 
     #[test]
