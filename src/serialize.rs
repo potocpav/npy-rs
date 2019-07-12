@@ -244,7 +244,6 @@ fn invalid_data<T>(message: &str) -> io::Result<T> {
     Err(io::Error::new(io::ErrorKind::InvalidData, message.to_string()))
 }
 
-// Takes info about each data size, from largest to smallest.
 macro_rules! impl_integer_serializable {
     ( @iterate
         meta: $meta:tt
@@ -318,7 +317,7 @@ macro_rules! impl_integer_serializable {
 
             fn reader(dtype: &DType) -> Result<Self::Reader, DTypeError> {
                 match $int::expect_scalar_dtype(dtype)? {
-                    // Read an integer of the same size and signedness.
+                    // Read an integer of the correct size and signedness.
                     //
                     // DateTime is an unsigned integer and TimeDelta is a signed integer,
                     // so we support those too.
@@ -339,7 +338,7 @@ macro_rules! impl_integer_serializable {
 
             fn writer(dtype: &DType) -> Result<Self::Writer, DTypeError> {
                 match $int::expect_scalar_dtype(dtype)? {
-                    // Write a signed integer of the correct size
+                    // Write an integer of the correct size and signedness.
                     TypeStr { size: $size, endianness, type_kind: $Int, .. } |
                     TypeStr { size: $size, endianness, type_kind: $DateTime, .. } => {
                         assert!($size == 1 || endianness != &Endianness::Irrelevant, "(BUG) invalid dtype constructed?");
