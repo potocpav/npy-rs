@@ -1,30 +1,34 @@
-
 use std::io::{self,Write,BufWriter,Seek,SeekFrom};
 use std::fs::File;
 use std::path::Path;
-use std::marker::PhantomData;
 
 use byteorder::{WriteBytesExt, LittleEndian};
 
-use serializable::Serializable;
+use serialize::{AutoSerialize, Serialize, TypeWrite};
 use header::DType;
 
 const FILLER: &'static [u8] = &[42; 19];
 
 /// Serialize into a file one row at a time. To serialize an iterator, use the
 /// [`to_file`](fn.to_file.html) function.
-pub struct OutFile<Row: Serializable> {
+pub struct OutFile<Row: Serialize> {
     shape_pos: usize,
     len: usize,
     fw: BufWriter<File>,
-    _t: PhantomData<Row>
+    writer: <Row as Serialize>::Writer,
 }
 
-impl<Row: Serializable> OutFile<Row> {
-    /// Open a file
+impl<Row: AutoSerialize> OutFile<Row> {
+    /// Create a file, using the default format for the given type.
     pub fn open<P: AsRef<Path>>(path: P) -> io::Result<Self> {
-        let dtype = Row::dtype();
-        if let &DType::Plain { ref shape, .. } = &dtype {
+        Self::open_with_dtype(&Row::default_dtype(), path)
+    }
+}
+
+impl<Row: Serialize> OutFile<Row> {
+    /// Create a file, using the provided dtype.
+    pub fn open_with_dtype<P: AsRef<Path>>(dtype: &DType, path: P) -> io::Result<Self> {
+        if let &DType::Plain { ref shape, .. } = dtype {
             assert!(shape.len() == 0, "plain non-scalar dtypes not supported");
         }
         let mut fw = BufWriter::new(File::create(path)?);
@@ -32,7 +36,12 @@ impl<Row: Serializable> OutFile<Row> {
         fw.write_all(b"NUMPY")?;
         fw.write_all(&[0x01u8, 0x00])?;
 
-        let (header, shape_pos) = create_header(&dtype);
+        let (header, shape_pos) = create_header(dtype);
+
+        let writer = match Row::writer(dtype) {
+            Ok(writer) => writer,
+            Err(e) => return Err(io::Error::new(io::ErrorKind::InvalidData, e.to_string())),
+        };
 
         let mut padding: Vec<u8> = vec![];
         padding.extend(&::std::iter::repeat(b' ').take(15 - ((header.len() + 10) % 16)).collect::<Vec<_>>());
@@ -44,21 +53,21 @@ impl<Row: Serializable> OutFile<Row> {
 
         fw.write_u16::<LittleEndian>(len as u16)?;
         fw.write_all(&header)?;
-        // Padding to 8 bytes
+        // Padding to 16 bytes
         fw.write_all(&padding)?;
 
         Ok(OutFile {
             shape_pos: shape_pos,
             len: 0,
             fw: fw,
-            _t: PhantomData,
+            writer: writer,
         })
     }
 
     /// Append a single row to the file
     pub fn push(&mut self, row: &Row) -> io::Result<()> {
         self.len += 1;
-        row.write(&mut self.fw)
+        self.writer.write_one(&mut self.fw, row)
     }
 
     fn close_(&mut self) -> io::Result<()> {
@@ -90,7 +99,7 @@ fn create_header(dtype: &DType) -> (Vec<u8>, usize) {
     (header, shape_pos)
 }
 
-impl<Row: Serializable> Drop for OutFile<Row> {
+impl<Row: Serialize> Drop for OutFile<Row> {
     fn drop(&mut self) {
         let _ = self.close_(); // Ignore the errors
     }
@@ -101,9 +110,9 @@ impl<Row: Serializable> Drop for OutFile<Row> {
 /// Serialize an iterator over a struct to a NPY file
 ///
 /// A single-statement alternative to saving row by row using the [`OutFile`](struct.OutFile.html).
-pub fn to_file<'a, S, T, P>(filename: P, data: T) -> ::std::io::Result<()> where
+pub fn to_file<S, T, P>(filename: P, data: T) -> ::std::io::Result<()> where
         P: AsRef<Path>,
-        S: Serializable + 'a,
+        S: AutoSerialize,
         T: IntoIterator<Item=S> {
 
     let mut of = OutFile::open(filename)?;
