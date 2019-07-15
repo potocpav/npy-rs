@@ -245,33 +245,12 @@ fn invalid_data<T>(message: &str) -> io::Result<T> {
 }
 
 macro_rules! impl_integer_serializable {
-    ( @iterate
-        meta: $meta:tt
-        remaining: []
-    ) => {};
-
-    ( @iterate
-        meta: $meta:tt
-        remaining: [$first:tt $($smaller:tt)*]
-    ) => {
-        impl_integer_serializable! {
-          @generate
-            meta: $meta
-            current: $first
-        }
-
-        impl_integer_serializable! {
-          @iterate
-            meta: $meta
-            remaining: [ $($smaller)* ]
-        }
-    };
-
     (
-        @generate
-        meta: [ (main_ty: $Int:ident) (date_ty: $DateTime:ident) ]
-        current: [ $size:literal $int:ident $read_int:ident $write_int:ident ]
-    ) => {
+        meta: [ (main_ty: $Int:ident) ]
+        types: [ $(
+            [ $size:literal $int:ident $read_int:ident $write_int:ident ]
+        )* ]
+    ) => { $(
         mod $int {
             use super::*;
 
@@ -318,11 +297,7 @@ macro_rules! impl_integer_serializable {
             fn reader(dtype: &DType) -> Result<Self::Reader, DTypeError> {
                 match $int::expect_scalar_dtype(dtype)? {
                     // Read an integer of the correct size and signedness.
-                    //
-                    // DateTime is an unsigned integer and TimeDelta is a signed integer,
-                    // so we support those too.
-                    TypeStr { size: $size, endianness, type_kind: $Int, .. } |
-                    TypeStr { size: $size, endianness, type_kind: $DateTime, .. } => {
+                    TypeStr { size: $size, endianness, type_kind: $Int, .. } => {
                         assert!($size == 1 || endianness != &Endianness::Irrelevant, "(BUG) invalid dtype constructed?");
 
                         let swap_byteorder = endianness.requires_swap(Endianness::of_machine());
@@ -339,8 +314,7 @@ macro_rules! impl_integer_serializable {
             fn writer(dtype: &DType) -> Result<Self::Writer, DTypeError> {
                 match $int::expect_scalar_dtype(dtype)? {
                     // Write an integer of the correct size and signedness.
-                    TypeStr { size: $size, endianness, type_kind: $Int, .. } |
-                    TypeStr { size: $size, endianness, type_kind: $DateTime, .. } => {
+                    TypeStr { size: $size, endianness, type_kind: $Int, .. } => {
                         assert!($size == 1 || endianness != &Endianness::Irrelevant, "(BUG) invalid dtype constructed?");
 
                         let swap_byteorder = endianness.requires_swap(Endianness::of_machine());
@@ -356,7 +330,7 @@ macro_rules! impl_integer_serializable {
                 DType::new_scalar(TypeStr::with_auto_endianness($Int, $size, None))
             }
         }
-    };
+    )*};
 }
 
 // Needed by the macro: Methods missing from byteorder
@@ -376,9 +350,8 @@ trait WriteSingleByteExt: WriteBytesExt {
 impl<W: WriteBytesExt + ?Sized> WriteSingleByteExt for W {}
 
 impl_integer_serializable! {
-    @iterate
-    meta: [ (main_ty: Int) (date_ty: TimeDelta) ]
-    remaining: [
+    meta: [ (main_ty: Int) ]
+    types: [
         // numpy doesn't support i128
         [ 8  i64 read_i64  write_i64 ]
         [ 4  i32 read_i32  write_i32 ]
@@ -388,9 +361,8 @@ impl_integer_serializable! {
 }
 
 impl_integer_serializable! {
-    @iterate
-    meta: [ (main_ty: Uint) (date_ty: DateTime) ]
-    remaining: [
+    meta: [ (main_ty: Uint) ]
+    types: [
         // numpy doesn't support i128
         [ 8  u64 read_u64  write_u64 ]
         [ 4  u32 read_u32  write_u32 ]
@@ -804,8 +776,6 @@ mod tests {
             .err().expect("writer_expect_write_err failed!");
     }
 
-    const BE_ONE_64: &[u8] = &[0, 0, 0, 0, 0, 0, 0, 1];
-    const LE_ONE_64: &[u8] = &[1, 0, 0, 0, 0, 0, 0, 0];
     const BE_ONE_32: &[u8] = &[0, 0, 0, 1];
     const LE_ONE_32: &[u8] = &[1, 0, 0, 0];
 
@@ -861,25 +831,6 @@ mod tests {
         assert_eq!(reader_output::<f32>(&le, &le_bytes), 42.0);
         assert_eq!(writer_output::<f32>(&be, &42.0), &be_bytes);
         assert_eq!(writer_output::<f32>(&le, &42.0), &le_bytes);
-    }
-
-    #[test]
-    fn datetime_as_int() {
-        let be = DType::parse("'>m8[ns]'").unwrap();
-        let le = DType::parse("'<m8[ns]'").unwrap();
-
-        assert_eq!(reader_output::<i64>(&be, BE_ONE_64), 1);
-        assert_eq!(reader_output::<i64>(&le, LE_ONE_64), 1);
-        assert_eq!(writer_output::<i64>(&be, &1), BE_ONE_64);
-        assert_eq!(writer_output::<i64>(&le, &1), LE_ONE_64);
-
-        let be = DType::parse("'>M8[ns]'").unwrap();
-        let le = DType::parse("'<M8[ns]'").unwrap();
-
-        assert_eq!(reader_output::<u64>(&be, BE_ONE_64), 1);
-        assert_eq!(reader_output::<u64>(&le, LE_ONE_64), 1);
-        assert_eq!(writer_output::<u64>(&be, &1), BE_ONE_64);
-        assert_eq!(writer_output::<u64>(&le, &1), LE_ONE_64);
     }
 
     #[test]

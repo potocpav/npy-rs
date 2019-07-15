@@ -95,7 +95,9 @@ pub(crate) enum TypeKind {
     Uint,
     /// Code `f`.
     ///
-    /// Notice that numpy **does** support 128-bit floats.
+    /// Notice that numpy supports half-precision floats (`np.float16`), as well as possibly
+    /// `<f12` or `<f16` (these are *not* actually 96-bit or 128-bit precision floats, but rather
+    /// they are `long double`s (which can be 80-bits) padded to various alignments).
     Float,
     /// Code `c`. Represents a complex number.
     ///
@@ -104,13 +106,13 @@ pub(crate) enum TypeKind {
     Complex,
     /// Code `m`. Represents a `numpy.timedelta64`.
     ///
-    /// Can use `i64` for serialization. `size` must be 8.
-    /// Check [`PlainDtype::time_units`] for the units.
+    /// `size` must be 8. This is a signed, 64-bit integer type representing a difference
+    /// between two points in time. Check [`PlainDtype::time_units`] for the units.
     TimeDelta,
     /// Code `M`. Represents a `numpy.datetime64`.
     ///
-    /// Can use `u64` for serialization. `size` must be 8.
-    /// Check [`PlainDtype::time_units`] for the units.
+    /// `size` must be 8. This is a signed, 64-bit integer type representing a point in time
+    /// as a delta from `1970-01-01T00:00Z`. Check [`PlainDtype::time_units`] for the units.
     DateTime,
     /// Code `S`. Represents a Python 3 `bytes` (`str` in Python 2).
     ///
